@@ -22,3 +22,9 @@ You can then parse files from the T3 instrument using the CLI
 t3pka --t3-file my_instrument_file.t3
 ```
 
+You can also parse a folder's worth of files
+
+```bash
+t3pka --t3-dir my_directory
+```
+
