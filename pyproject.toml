@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "t3-pka-parser"
+name = "t3-chomper"
 version = "0.1.0"
 description = "Parse pKa data from Sirus T3 XML files"
 authors = ["hugo.macdermott-opeskin@omsf.io"]
@@ -12,7 +12,7 @@ xmltodict = "^0.13"
 
 
 [tool.poetry.scripts]
-t3pka = "t3_pka_parser.t3_extractor:pka"
+t3pka = "t3_chomper.t3_extractor:pka"
 
 
 [build-system]
