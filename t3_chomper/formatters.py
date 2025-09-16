@@ -55,61 +55,113 @@ def generate_registration_pka_file(
     return merged_df
 
 
-def generate_sirius_csv_import(
-    input_csv: str,
-    output_dir: str,
-    pkas_col: str = "reformatted_pkas",
-    sample_id_col: str = "batch_sample",
-) -> None:
+class SiriusT3CSVGenerator:
     """
-    Generate a CSV import file for loading samples into a SeriusT3 instrument.
+    Abstract class used to generate CSV import file(s) for loading samples into a SeriusT3 instrument.
+    Subclasses will have different implementations for writing the experimental sections in the generated CSV files.
 
     Args:
         input_csv: input data file with compound IDs and estimated pKas
-        output_dir: output dir for the generated CSV files
         pkas_col: name for the column containing the estimated pKas
         sample_id_col: name for column containing the sample names
+
     """
 
-    df = pd.read_csv(input_csv)
-    if pkas_col not in df.columns:
-        raise ValueError(f"Column {pkas_col} not found in {input_csv}")
-    missing_pkas_count = df[pkas_col].isna().sum()
-    if missing_pkas_count:
-        missing_row_ids = df[df[pkas_col].isna()][sample_id_col]
-        raise ValueError(
-            f"Input file has {missing_pkas_count} missing estimated pKas: {missing_row_ids}"
-        )
+    SAMPLES_PER_TRAY = 48
 
-    output_path = pathlib.Path(output_dir)
-    output_path.mkdir()
+    def __init__(
+        self,
+        input_csv: str,
+        pkas_col: str = "reformatted_pkas",
+        sample_id_col: str = "batch_sample",
+    ):
+        self._input_csv = input_csv
+        self._pkas_col = pkas_col
+        self._sample_id_col = sample_id_col
+        self._df = self._load_input_file()
 
-    # Split into sets of 47 samples per tray
-    tray_dfs = [df[i : i + 47] for i in range(0, df.shape[0], 47)]
-    for idx, tray_df in enumerate(tray_dfs):
-        outstr = "SCHEDULEIMPORTCSV\n\n"
+    @property
+    def input_csv(self) -> str:
+        return self._input_csv
+
+    def _load_input_file(self) -> pd.DataFrame:
+        df = pd.read_csv(self._input_csv)
+        if self._pkas_col not in df.columns:
+            raise ValueError(f"Column {self._pkas_col} not found in {self._input_csv}")
+        missing_pkas_count = df[self._pkas_col].isna().sum()
+        if missing_pkas_count:
+            missing_row_ids = df[df[self._pkas_col].isna()][self._sample_id_col]
+            raise ValueError(
+                f"Input file has {missing_pkas_count} missing estimated pKas: {missing_row_ids}"
+            )
+        return df
+
+    def generate_header_section(self) -> str:
+        return "SCHEDULEIMPORTCSV\n\n"
+
+    def generate_sample_section(self, sample_df: pd.DataFrame) -> str:
+        """Generate section of the SiriusT3 CSV import file with Sample information"""
         lines = []
-        for row in tray_df.itertuples():
+        for row in sample_df.itertuples():
             lines.append(
                 ",".join(
                     [
-                        f"{getattr(row, sample_id_col)}",
-                        f"{getattr(row, pkas_col).rstrip(',')}",
+                        f"{getattr(row, self._sample_id_col)}",
+                        f"{getattr(row, self._pkas_col).rstrip(',')}",
                         f"""SYM,{getattr(row, "well")}""",
                         f"""MW,{getattr(row, "mw")}""",
                     ]
                 )
             )
-        outstr += "\n".join(lines)
-        outstr += f"\n\nTRAY,{output_dir}_{idx}\n"
+        return "\n".join(lines)
 
-        # First experiment is to run a blank for calibration
-        outstr += "Fast UV Buffer Calib MeOH\n"
+    def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
+        raise NotImplementedError
+
+    @property
+    def num_samples(self):
+        """Total number of samples in input"""
+        return self._df.shape[0]
+
+    def _get_split_dfs(self) -> list[pd.DataFrame]:
+        """Split samples in input into chunks for each tray"""
+        return [
+            self._df.iloc[i : i + self.SAMPLES_PER_TRAY]
+            for i in range(0, self.num_samples, self.SAMPLES_PER_TRAY)
+        ]
+
+    def generate_csv_files(self, output_dir) -> None:
+        """Generate CSV files for import"""
+
+        output_path = pathlib.Path(output_dir)
+        output_path.mkdir()
+
+        for idx, tray_df in self._get_split_dfs():
+            outstr = self.generate_header_section()
+            outstr += self.generate_sample_section(tray_df)
+            outstr += f"""\n\nTRAY,{output_dir.strip("/")}_{idx}\n"""
+            outstr += self.generate_experiment_section(tray_df)
+
+            output_filename = output_dir / f"tray_{idx}.csv"
+            with open(output_filename, "w") as fout:
+                fout.write(outstr)
+            logger.info(f"Wrote to {output_filename}")
+
+
+class FastUVPSKAGenerator(SiriusT3CSVGenerator):
+    SAMPLES_PER_TRAY = 47
+
+    def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
+        """
+        Generate experiment section for Fast UV pKa experiment.
+        This does one calibration experiment "Fast UV Buffer Calib MeOH" per plate,
+        and then "Fast UV psKa" for 47 samples, each at 0.005 mL and 10 mM in pure DMSO
+        """
 
         lines = []
-        for row in tray_df.itertuples():
-            sample_name = getattr(row, sample_id_col)
-            # TODO: should we specify a well location here?
+        for row in sample_df.itertuples():
+            sample_name = getattr(row, self._sample_id_col)
+            # TODO: should we specify a well location here? What about FW?
             lines.append(
                 ",".join(
                     [
@@ -117,17 +169,21 @@ def generate_sirius_csv_import(
                         f"title,pka of {sample_name}",
                         f"{sample_name}",
                         f"{sample_name},1",
-                        f"""fw,{getattr(row, "fw")}""",
                         "volume,0.005",
                         "Concentration,10",
                         "DMSO,1",
                     ]
                 )
             )
-        outstr += "\n".join(lines)
+        return "Fast UV Buffer Calib MeOH\n" + "\n".join(lines)
 
-        output_filename = output_path / f"tray_{idx}.csv"
-        with open(output_filename, "w") as fout:
-            fout.write(outstr)
-        logger.info(f"Wrote to {output_filename}")
-    logger.info(f"Wrote {len(tray_dfs)} output files.")
+
+class LogPGenerator(SiriusT3CSVGenerator):
+    SAMPLES_PER_TRAY = 16
+
+    def generate_experimental_section(self, sample_df: pd.DataFrame) -> str:
+        """
+        Generate the experimental section for the "pH-metric medium logP octanol" template.
+        This has 16 samples followed by 2x cleanup steps in each plate
+        """
+        # TODO
