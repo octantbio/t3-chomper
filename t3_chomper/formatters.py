@@ -143,7 +143,7 @@ class SiriusT3CSVGenerator:
             outstr += f"""\n\nTRAY,{output_dir.strip("/")}_{idx}\n"""
             outstr += self.generate_experiment_section(tray_df)
 
-            output_filename = output_dir / f"tray_{idx}.csv"
+            output_filename = output_path / f"tray_{idx}.csv"
             with open(output_filename, "w") as fout:
                 fout.write(outstr)
             logger.info(f"Wrote to {output_filename}")
