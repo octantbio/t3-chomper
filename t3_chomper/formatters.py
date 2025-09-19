@@ -2,7 +2,7 @@ import pathlib
 
 import pandas as pd
 
-from t3_chomper.logging import get_logger
+from t3_chomper.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -8,9 +8,10 @@ import click
 import pandas as pd
 
 from t3_chomper.extractors import UVMetricPKaT3RExtractor
-from t3_chomper.logging import get_logger
+from t3_chomper.logger import get_logger
 
 logger = get_logger(__name__)
+
 
 def parse_t3_pka_xml(file: Union[str, Path]) -> tuple:
     """
