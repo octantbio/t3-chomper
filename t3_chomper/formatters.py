@@ -1,9 +1,10 @@
-import logging
 import pathlib
 
 import pandas as pd
 
-logger = logging.getLogger(__name__)
+from t3_chomper.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 def generate_registration_pka_file(
@@ -97,7 +98,7 @@ class SiriusT3CSVGenerator:
         return df
 
     def generate_header_section(self) -> str:
-        return "SCHEDULEIMPORTCSV\n\n"
+        return "ScheduleImportCSV\n\n"
 
     def generate_sample_section(self, sample_df: pd.DataFrame) -> str:
         """Generate section of the SiriusT3 CSV import file with Sample information"""
@@ -184,6 +185,23 @@ class LogPGenerator(SiriusT3CSVGenerator):
     def generate_experimental_section(self, sample_df: pd.DataFrame) -> str:
         """
         Generate the experimental section for the "pH-metric medium logP octanol" template.
-        This has 16 samples followed by 2x cleanup steps in each plate
+        This has 16 samples with 2x cleanup steps in between samples in each plate
         """
-        # TODO
+        lines = []
+        for row in sample_df.itertuples():
+            sample_name = getattr(row, self._sample_id_col)
+            lines.append(
+                ",".join(
+                    [
+                        "pH-metric medium logP octanol",
+                        f"title,logP of {sample_name}",
+                        f"{sample_name}",
+                        f"{sample_name},1",
+                        f"""fw,{getattr(row, "fw")}""",
+                        f"""mg, {getattr(row, "mg")}""",
+                    ]
+                )
+            )
+            lines.append("Clean Up")
+            lines.append("Clean Up")
+        return "\n".join(lines)
