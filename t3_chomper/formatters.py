@@ -137,7 +137,7 @@ class SiriusT3CSVGenerator:
         output_path = pathlib.Path(output_dir)
         output_path.mkdir()
 
-        for idx, tray_df in self._get_split_dfs():
+        for idx, tray_df in enumerate(self._get_split_dfs()):
             outstr = self.generate_header_section()
             outstr += self.generate_sample_section(tray_df)
             outstr += f"""\n\nTRAY,{output_dir.strip("/")}_{idx}\n"""
