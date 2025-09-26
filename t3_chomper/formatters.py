@@ -58,7 +58,7 @@ def generate_registration_pka_file(
 
 class SiriusT3CSVGenerator:
     """
-    Abstract class used to generate CSV import file(s) for loading samples into a SeriusT3 instrument.
+    Abstract class used to generate CSV import file(s) for loading samples into a SiriusT3 instrument.
     Subclasses will have different implementations for writing the experimental sections in the generated CSV files.
 
     Args:
