@@ -7,9 +7,9 @@ from typing import Union
 import click
 import pandas as pd
 
-from t3_chomper.extractors import (
-    UVMetricPKaT3RExtractor,
-    LogPT3RExtractor,
+from t3_chomper.parsers import (
+    UVMetricPKaT3RParser,
+    LogPT3RParser,
     AssayCategory,
 )
 from t3_chomper.logger import get_logger
@@ -43,10 +43,10 @@ class FileOrPathExtractor:
         for file in self._t3_files:
             logger.debug(f"Parsing T3R XML file: {file}")
             if assay_category == AssayCategory.PKA:
-                pka_parser = UVMetricPKaT3RExtractor(file)
+                pka_parser = UVMetricPKaT3RParser(file)
                 results = pka_parser.result_dict
             elif assay_category == AssayCategory.LOGP:
-                logp_parser = LogPT3RExtractor(file)
+                logp_parser = LogPT3RParser(file)
                 results = logp_parser.result_dict
             else:
                 raise ValueError(f"Unknown assay category: {assay_category}")

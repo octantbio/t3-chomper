@@ -71,9 +71,9 @@ def get_assay_category(filename: str) -> AssayCategory:
         raise ValueError("Could not determine assay category")
 
 
-class BaseT3RExtractor:
+class BaseT3RParser:
     """
-    Base class for extracting data from T3R files.
+    Base class for parsing data from T3R files.
     Subclasses can be defined for specific experimental protocols.
     This base class defines properties common to all t3r result files.
     """
@@ -126,7 +126,7 @@ class BaseT3RExtractor:
         return self._doc["DirectControlAssayResultsFile"]["Summary"]["SampleName"]
 
 
-class UVMetricPKaT3RExtractor(BaseT3RExtractor):
+class UVMetricPKaT3RParser(BaseT3RParser):
     """
     Class to handle results file from pKa Experiment
     """
@@ -190,7 +190,7 @@ class UVMetricPKaT3RExtractor(BaseT3RExtractor):
         )
 
 
-class LogPT3RExtractor(BaseT3RExtractor):
+class LogPT3RParser(BaseT3RParser):
     """
     Class to handle results file from a LogP experiment
     """
