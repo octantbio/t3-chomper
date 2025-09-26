@@ -89,9 +89,12 @@ class BaseT3RExtractor:
             raise ValueError("Input file is not the expected assay type")
 
     def _load_document(self):
-        with open(self.filename, "rb") as fin:
-            self._doc = xmltodict.parse(fin)
-            logger.info(f"Loaded {self.filename}")
+        try:
+            with open(self.filename, "rb") as fin:
+                self._doc = xmltodict.parse(fin)
+                logger.info(f"Loaded {self.filename}")
+        except Exception as e:
+            logger.error(f"Error loading file: {self.filename}: {e}")
 
     @property
     def filename(self) -> str:
@@ -129,6 +132,22 @@ class UVMetricPKaT3RExtractor(BaseT3RExtractor):
     """
 
     EXPECTED_ASSAY_CATEGORY = AssayCategory.PKA
+
+    @property
+    def result_dict(self) -> dict:
+        """
+        Return a result summary as a dict
+        """
+        return {
+            "filename": self.filename,
+            "sample": self.sample_name,
+            "assay_name": self.assay_name,
+            "assay_quality": self.assay_quality,
+            "pka": self.mean_pka_values,
+            "std": self.mean_pka_std_values,
+            "ionic_strength": self.mean_pka_ionic_strengths,
+            "temp": self.mean_pka_temperatures,
+        }
 
     @cached_property
     def _mean_dpas_result(self) -> dict:
@@ -177,6 +196,19 @@ class LogPT3RExtractor(BaseT3RExtractor):
     """
 
     EXPECTED_ASSAY_CATEGORY = AssayCategory.LOGP
+
+    @property
+    def result_dict(self) -> dict:
+        """Return parsed results as a dict"""
+        return {
+            "filename": self.filename,
+            "sample": self.sample_name,
+            "assay_name": self.assay_name,
+            "assay_quality": self.assay_quality,
+            "logp": self.logp_result.value,
+            "rmsd": self.logp_result.rmsd,
+            "solvent": self.logp_solvent,
+        }
 
     @cached_property
     def logp_result(self) -> LogPResult:
