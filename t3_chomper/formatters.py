@@ -1,3 +1,4 @@
+import enum
 import pathlib
 
 import pandas as pd
@@ -205,3 +206,12 @@ class LogPGenerator(SiriusT3CSVGenerator):
             lines.append("Clean Up")
             lines.append("Clean Up")
         return "\n".join(lines)
+
+
+class TrayFormat(enum.Enum):
+    """
+    Enum of defined tray formats
+    """
+
+    FastUVPSKA = FastUVPSKAGenerator
+    LogP = LogPGenerator
