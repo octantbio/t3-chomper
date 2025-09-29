@@ -30,7 +30,6 @@ class CaseInsensitiveStrEnum(enum.StrEnum):
 class AssayCategory(CaseInsensitiveStrEnum):
     "Assay categories that we consider"
 
-    NULL = enum.auto()
     PKA = enum.auto()
     LOGP = enum.auto()
 
@@ -78,7 +77,7 @@ class BaseT3RParser:
     This base class defines properties common to all t3r result files.
     """
 
-    EXPECTED_ASSAY_CATEGORY = AssayCategory.NULL
+    EXPECTED_ASSAY_CATEGORY = None
 
     def __init__(self, filename: str) -> None:
         self._filename = filename
