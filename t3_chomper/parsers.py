@@ -61,7 +61,7 @@ class LogPResult:
     rmsd: float
 
 
-def get_assay_category(filename: str) -> AssayCategory:
+def get_assay_category(filename: Union[str, pathlib.Path]) -> AssayCategory:
     """Utility function to quickly get the assay category for a provided t3r file"""
 
     with open(filename) as fin:
@@ -82,9 +82,7 @@ class BaseT3RParser:
     EXPECTED_ASSAY_CATEGORY = None
 
     def __init__(self, filename: Union[str, pathlib.Path]) -> None:
-        self._filename = (
-            filename.name if isinstance(filename, pathlib.Path) else filename
-        )
+        self._filename = pathlib.Path(filename)
         self._doc: dict = {}
         self._load_document()
 
@@ -100,7 +98,7 @@ class BaseT3RParser:
             logger.error(f"Error loading file: {self.filename}: {e}")
 
     @property
-    def filename(self) -> str:
+    def filename(self) -> pathlib.Path:
         return self._filename
 
     @property
@@ -142,7 +140,7 @@ class UVMetricPKaT3RParser(BaseT3RParser):
         Return a result summary as a dict
         """
         return {
-            "filename": self.filename,
+            "filename": self.filename.name,
             "sample": self.sample_name,
             "assay_name": self.assay_name,
             "assay_quality": self.assay_quality,
@@ -206,7 +204,7 @@ class LogPT3RParser(BaseT3RParser):
     def result_dict(self) -> dict:
         """Return parsed results as a dict"""
         return {
-            "filename": self.filename,
+            "filename": self.filename.name,
             "sample": self.sample_name,
             "assay_name": self.assay_name,
             "assay_quality": self.assay_quality,

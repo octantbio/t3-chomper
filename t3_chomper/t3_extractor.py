@@ -46,7 +46,6 @@ class FileOrPathExtractor:
                 results = logp_parser.result_dict
             else:
                 raise ValueError(f"Unknown assay category: {assay_category}")
-            results["file"] = Path(file).name
             rows.append(results)
         df = pd.DataFrame(rows)
         return df
@@ -67,10 +66,10 @@ class FileOrPathExtractor:
 @click.option(
     "--output",
     type=click.Path(exists=False, file_okay=True),
-    default="pka_results.csv",
+    default="t3r_results.csv",
 )
 @click.option("--protocol", type=click.Choice(AssayCategory, case_sensitive=False))
-def t3_extract(path, output_csv, protocol):
+def t3_extract(path, output, protocol):
     click.echo(f"Extracting data from t3r files.")
     extractor = FileOrPathExtractor(path=path)
     if protocol == AssayCategory.PKA:
@@ -79,5 +78,5 @@ def t3_extract(path, output_csv, protocol):
         df = extractor.parse_logp_files()
     else:
         raise ValueError(f"Unknown Assay category: {protocol}")
-    logger.info(f"Finished parsing, writing to {output_csv}")
-    df.to_csv(output_csv, index=False)
+    logger.info(f"Finished parsing, writing to {output}")
+    df.to_csv(output, index=False)
