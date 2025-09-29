@@ -1,0 +1,28 @@
+"""CLI for generating CSV import files for SiriusT3 instrument"""
+
+import click
+from io import StringIO
+
+from t3_chomper.formatters import (
+    generate_registration_pka_file,
+    TrayFormat,
+)
+
+
+@click.command()
+@click.argument(
+    "--regi",
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+)
+@click.argument(
+    "--pka", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True)
+)
+@click.argument("--output", type=click.Path(exists=False))
+@click.option("--protocol", type=click.Choice(TrayFormat, case_sensitive=False))
+def t3_gencsv(protocol, regi, pka, output):
+    click.echo(f"Generating {protocol} CSV for import")
+    merged_df = generate_registration_pka_file(registration_csv=regi, pka_csv=pka)
+    buffer = StringIO(merged_df.to_csv(None, index=False))
+    formatter = protocol.value(input_csv=buffer)
+    click.echo(f"Found {formatter.num_samples} samples with estimated pKa values.")
+    formatter.generate_csv_files(output_dir=output)
