@@ -16,15 +16,14 @@ cd t3-chomper
 pip install -e . 
 ```
 
-You can then parse files from the T3 instrument using the CLI
+You can then parse file(s) from the T3 instrument using the CLI
 
 ```bash
-t3pka --t3-file my_instrument_file.t3
+t3_extract <file or path> --protocol pka --output pka_output.csv
 ```
 
-You can also parse a folder's worth of files
+Or generate CSV import files to create a pka experiment:
 
 ```bash
-t3pka --t3-dir my_directory
+t3_gencsv --regi <registration file> --pka <estimated pka file> --protocol pka --output <pka_experiment_dir>
 ```
-

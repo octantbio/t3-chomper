@@ -62,6 +62,7 @@ class FileOrPathExtractor:
     "path",
     type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
     default=None,
+    help="t3r result file or directory",
 )
 @click.option(
     "--output",

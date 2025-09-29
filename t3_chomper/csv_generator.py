@@ -14,13 +14,17 @@ from t3_chomper.formatters import (
     "--regi",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    help="Registration CSV file with sample information",
 )
 @click.option(
     "--pka",
     required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
+    help="CSV file with formatted pKa estimates",
 )
-@click.option("--output", required=True, type=click.Path(exists=False))
+@click.option(
+    "--output", required=True, type=click.Path(exists=False), help="Output directory"
+)
 @click.option(
     "--protocol", required=True, type=click.Choice(TrayFormat, case_sensitive=False)
 )
