@@ -1,6 +1,5 @@
 """CLI for extracting data from t3r files."""
 
-import glob
 from pathlib import Path
 from typing import Union
 
@@ -22,20 +21,17 @@ class FileOrPathExtractor:
     Class to extract data from one or more t3r result files.
     """
 
-    def __init__(
-        self,
-        t3_dir: Union[str, None] = None,
-        t3_file: Union[str, None] = None,
-    ):
-        if (t3_dir is None and t3_file is None) or (t3_dir and t3_file):
-            raise ValueError("Provide either t3_dir or t3_file, but not both.")
-
-        if t3_dir:
-            self._t3_files = glob.glob(f"{t3_dir}/*.t3r")
+    def __init__(self, path: Union[str, Path]):
+        path = Path(path)
+        if path.is_dir():
+            self._t3_files = list(path.glob("*.t3r"))
             if not self._t3_files:
-                raise FileNotFoundError(f"No .t3r files found in directory: {t3_dir}")
+                raise FileNotFoundError(f"No .t3r files found in directory: {path}")
+            num_files = len(self._t3_files)
+            logger.info(f"Found {num_files} t3r results files.")
         else:
-            self._t3_files = [t3_file]
+            self._t3_files = [path]
+            logger.info(f"Found 1 t3r result file.")
 
     def _parse_files(self, assay_category: AssayCategory) -> pd.DataFrame:
         """ """
@@ -62,51 +58,26 @@ class FileOrPathExtractor:
         return self._parse_files(AssayCategory.LOGP)
 
 
-@click.group()
-@click.option(
-    "--t3-dir",
-    type=click.Path(exists=True, file_okay=False, dir_okay=True, readable=True),
+@click.command()
+@click.argument(
+    "path",
+    type=click.Path(exists=True, file_okay=True, dir_okay=True, readable=True),
     default=None,
-    help="Directory containing .t3 files",
 )
 @click.option(
-    "--t3-file",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-    default=None,
-    help="Single .t3 file to parse",
-)
-@click.option(
-    "--output_csv",
+    "--output",
     type=click.Path(exists=False, file_okay=True),
     default="pka_results.csv",
 )
-def t3r_extract():
+@click.option("--protocol", type=click.Choice(AssayCategory, case_sensitive=False))
+def t3_extract(path, output_csv, protocol):
     click.echo(f"Extracting data from t3r files.")
-
-
-@t3r_extract.command()
-def pka(t3_dir, t3_file, output_csv):
-    """
-    Parse T3R pKa XML files and export to CSV.
-    """
-    logger.info("Running T3 pKa parsing")
-    extractor = FileOrPathExtractor(t3_dir=t3_dir, t3_file=t3_file)
-    df = extractor.parse_pka_files()
+    extractor = FileOrPathExtractor(path=path)
+    if protocol == AssayCategory.PKA:
+        df = extractor.parse_pka_files()
+    elif protocol == AssayCategory.LOGP:
+        df = extractor.parse_logp_files()
+    else:
+        raise ValueError(f"Unknown Assay category: {protocol}")
     logger.info(f"Finished parsing, writing to {output_csv}")
     df.to_csv(output_csv, index=False)
-
-
-@t3r_extract.command()
-def logp(t3_dir, t3_file, output_csv):
-    """
-    Parse T3R logp XML files and export to CSV.
-    """
-    logger.info("Running T3 logp parsing")
-    extractor = FileOrPathExtractor(t3_dir=t3_dir, t3_file=t3_file)
-    df = extractor.parse_logp_files()
-    logger.info(f"Finished parsing, writing to {output_csv}")
-    df.to_csv(output_csv, index=False)
-
-
-if __name__ == "__main__":
-    pass
