@@ -48,9 +48,11 @@ class PkaResult:
     """Container for a single pKa result or prediction"""
 
     value: float
-    std: Optional[float]
-    pka_type: PkaType
-    source: str
+    std: Optional[float] = None
+    pka_type: Optional[PkaType] = None
+    ionic_strength: Optional[float] = None
+    temperature: Optional[float] = None
+    source: Optional[str] = None
 
 
 @dataclass
@@ -144,53 +146,94 @@ class UVMetricPKaT3RParser(BaseT3RParser):
             "sample": self.sample_name,
             "assay_name": self.assay_name,
             "assay_quality": self.assay_quality,
-            "pka": self.mean_pka_values,
-            "std": self.mean_pka_std_values,
-            "ionic_strength": self.mean_pka_ionic_strengths,
-            "temp": self.mean_pka_temperatures,
+            "pka": [result.value for result in self.pka_results],
+            "std": [result.std for result in self.pka_results],
+            "ionic_strength": [result.ionic_strength for result in self.pka_results],
+            "temp": [result.temperature for result in self.pka_results],
         }
 
-    @cached_property
-    def _mean_dpas_result(self) -> dict:
-        try:
-            return self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
-                "FastDpasMeanResult"
-            ]
-        except KeyError:
-            raise KeyError(
-                "No Dpas Result in file, perhaps not a complete pKa assay result file?"
+    @property
+    def _fastdpas_mean_results(self) -> list[PkaResult]:
+        """
+        pKa result(s) from the "FastDpasMeanResult" element
+        """
+        obj = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
+            "FastDpasMeanResult"
+        ]
+        num_pkas = int(obj["MeanPkaResults"]["@size"])
+        results = []
+        for pka in range(num_pkas):
+            results.append(
+                PkaResult(
+                    value=float(obj["MeanPkaResults"]["#text"].split(" ")[pka]),
+                    std=float(obj["MeanPkasStdDevs"]["#text"].split(" ")[pka]),
+                    ionic_strength=float(
+                        obj["MeanPkasAverageIonicStrength"]["#text"].split(" ")[pka]
+                    ),
+                    temperature=float(
+                        obj["MeanPkasAverageTemperature"]["#text"].split(" ")[pka]
+                    ),
+                )
             )
+        return results
 
     @property
-    def mean_pka_values(self) -> float:
-        return float(self._mean_dpas_result["MeanPkaResults"]["#text"])
+    def _dielectric_fit_result(self) -> list[PkaResult]:
+        """
+        Get pKa results from the YasudaShedlovskyResult.DielectircFit element
+        """
+        obj = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
+            "YasudaShedlovskyResult"
+        ]["DielectricFit"]["YasudaShedlovskyFit"]
+
+        # Force to a list
+        if not isinstance(obj, list):
+            obj = [obj]
+
+        results = [
+            PkaResult(
+                value=float(fit["AqueousPka"]),
+                std=float(fit["ConfidenceInterval"]),
+                ionic_strength=float(fit["AverageIonicStrength"]),
+                temperature=float(fit["AverageTemperature"]),
+            )
+            for fit in obj
+        ]
+        return results
 
     @property
-    def mean_pka_std_values(self) -> float:
-        return float(self._mean_dpas_result["MeanPkasStdDevs"]["#text"])
+    def pka_results(self) -> list[PkaResult]:
+        """
+        Get measured pKa results
+        """
+        try:
+            results = self._fastdpas_mean_results
+        except KeyError:
+            try:
+                results = self._dielectric_fit_result
+            except KeyError:
+                raise KeyError(f"Could not find pKa results in file: {self.filename}")
+        return results
 
     @property
-    def mean_pka_ionic_strengths(self) -> float:
-        return float(self._mean_dpas_result["MeanPkasAverageIonicStrength"]["#text"])
-
-    @property
-    def mean_pka_temperatures(self) -> float:
-        return float(self._mean_dpas_result["MeanPkasAverageTemperature"]["#text"])
-
-    @cached_property
-    def predicted_pka(self) -> PkaResult:
-        data = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
+    def predicted_pka(self) -> list[PkaResult]:
+        """Get the predicted pKa values input into the experiment"""
+        obj = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
             "PhMetricModel"
         ]["Sample"]["Pka"]
-        predicted_type = PkaType(data["PkaType"]["Value"])
-        predicted_value = float(data["PkaValue"]["Value"])
-        prediction_source = data["PkaValue"]["Source"]
-        return PkaResult(
-            value=predicted_value,
-            std=None,
-            pka_type=predicted_type,
-            source=prediction_source,
-        )
+
+        if not isinstance(obj, list):
+            obj = [obj]
+
+        return [
+            PkaResult(
+                value=float(pred["PkaValue"]["Value"]),
+                std=None,
+                pka_type=PkaType(pred["PkaType"]["Value"]),
+                source=pred["PkaValue"]["Source"],
+            )
+            for pred in obj
+        ]
 
 
 class LogPT3RParser(BaseT3RParser):
