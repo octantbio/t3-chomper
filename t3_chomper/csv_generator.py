@@ -10,15 +10,20 @@ from t3_chomper.formatters import (
 
 
 @click.command()
-@click.argument(
+@click.option(
     "--regi",
+    required=True,
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
-@click.argument(
-    "--pka", type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True)
+@click.option(
+    "--pka",
+    required=True,
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
-@click.argument("--output", type=click.Path(exists=False))
-@click.option("--protocol", type=click.Choice(TrayFormat, case_sensitive=False))
+@click.option("--output", required=True, type=click.Path(exists=False))
+@click.option(
+    "--protocol", required=True, type=click.Choice(TrayFormat, case_sensitive=False)
+)
 def t3_gencsv(protocol, regi, pka, output):
     click.echo(f"Generating {protocol} CSV for import")
     merged_df = generate_registration_pka_file(registration_csv=regi, pka_csv=pka)

@@ -68,7 +68,9 @@ class FileOrPathExtractor:
     type=click.Path(exists=False, file_okay=True),
     default="t3r_results.csv",
 )
-@click.option("--protocol", type=click.Choice(AssayCategory, case_sensitive=False))
+@click.option(
+    "--protocol", required=True, type=click.Choice(AssayCategory, case_sensitive=False)
+)
 def t3_extract(path, output, protocol):
     click.echo(f"Extracting data from t3r files.")
     extractor = FileOrPathExtractor(path=path)
