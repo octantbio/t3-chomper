@@ -1,8 +1,10 @@
 from datetime import datetime
-import enum
 from dataclasses import dataclass
+import enum
 from functools import cached_property
+import pathlib
 import re
+from typing import Optional, Union
 
 import xmltodict
 
@@ -17,7 +19,7 @@ logger = get_logger(__name__)
 
 
 class CaseInsensitiveStrEnum(enum.StrEnum):
-    "Enum that lets us refer to elements in a case-insensitive way"
+    """Enum that lets us refer to elements in a case-insensitive way"""
 
     @classmethod
     def _missing_(cls, value):
@@ -28,14 +30,14 @@ class CaseInsensitiveStrEnum(enum.StrEnum):
 
 
 class AssayCategory(CaseInsensitiveStrEnum):
-    "Assay categories that we consider"
+    """Assay categories that we consider"""
 
     PKA = enum.auto()
     LOGP = enum.auto()
 
 
 class PkaType(CaseInsensitiveStrEnum):
-    "Possible pKa types"
+    """Possible pKa types"""
 
     ACID = enum.auto()
     BASE = enum.auto()
@@ -43,24 +45,24 @@ class PkaType(CaseInsensitiveStrEnum):
 
 @dataclass
 class PkaResult:
-    "Container for a single pKa result or prediction"
+    """Container for a single pKa result or prediction"""
 
     value: float
-    std: float | None
+    std: Optional[float]
     pka_type: PkaType
     source: str
 
 
 @dataclass
 class LogPResult:
-    "Container for a single logP result"
+    """Container for a single logP result"""
 
     value: float
     rmsd: float
 
 
 def get_assay_category(filename: str) -> AssayCategory:
-    "Utility function to quickly get the assay category for a provided t3r file"
+    """Utility function to quickly get the assay category for a provided t3r file"""
 
     with open(filename) as fin:
         res = re.findall(r"<Category>(\w+)</Category>", fin.read())
@@ -79,8 +81,10 @@ class BaseT3RParser:
 
     EXPECTED_ASSAY_CATEGORY = None
 
-    def __init__(self, filename: str) -> None:
-        self._filename = filename
+    def __init__(self, filename: Union[str, pathlib.Path]) -> None:
+        self._filename = (
+            filename.name if isinstance(filename, pathlib.Path) else filename
+        )
         self._doc: dict = {}
         self._load_document()
 
@@ -91,7 +95,7 @@ class BaseT3RParser:
         try:
             with open(self.filename, "rb") as fin:
                 self._doc = xmltodict.parse(fin)
-                logger.info(f"Loaded {self.filename}")
+                logger.info(f"Loaded file {self.filename}")
         except Exception as e:
             logger.error(f"Error loading file: {self.filename}: {e}")
 
@@ -154,8 +158,10 @@ class UVMetricPKaT3RParser(BaseT3RParser):
             return self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
                 "FastDpasMeanResult"
             ]
-        except KeyError as e:
-            raise KeyError("No Dpas Result in file, perhaps not a pKa assay?")
+        except KeyError:
+            raise KeyError(
+                "No Dpas Result in file, perhaps not a complete pKa assay result file?"
+            )
 
     @property
     def mean_pka_values(self) -> float:
@@ -174,7 +180,7 @@ class UVMetricPKaT3RParser(BaseT3RParser):
         return float(self._mean_dpas_result["MeanPkasAverageTemperature"]["#text"])
 
     @cached_property
-    def predicted_pKa(self) -> PkaResult:
+    def predicted_pka(self) -> PkaResult:
         data = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
             "PhMetricModel"
         ]["Sample"]["Pka"]
