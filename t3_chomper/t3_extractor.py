@@ -66,7 +66,6 @@ class FileOrPathExtractor:
 @click.option(
     "--output",
     type=click.Path(exists=False, file_okay=True),
-    default="t3r_results.csv",
 )
 @click.option(
     "--protocol", required=True, type=click.Choice(AssayCategory, case_sensitive=False)
@@ -80,5 +79,9 @@ def t3_extract(path, output, protocol):
         df = extractor.parse_logp_files()
     else:
         raise ValueError(f"Unknown Assay category: {protocol}")
-    logger.info(f"Finished parsing, writing to {output}")
-    df.to_csv(output, index=False)
+    if output:
+        logger.info(f"Finished parsing, writing to {output}")
+        df.to_csv(output, index=False)
+    else:
+        logger.info(f"No output file provided, writing to stdout.")
+        click.echo(df.to_csv(index=False))
