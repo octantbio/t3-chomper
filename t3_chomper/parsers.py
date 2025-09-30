@@ -13,7 +13,6 @@ from t3_chomper.logger import get_logger
 logger = get_logger(__name__)
 
 ## TODO:
-## - What happens with multiple Pkas? Can I get an example?
 ## - How to ensure the right logP
 ## - What other values do we want to extract from result files?
 
@@ -41,6 +40,11 @@ class PkaType(CaseInsensitiveStrEnum):
 
     ACID = enum.auto()
     BASE = enum.auto()
+
+    @property
+    def lower(self) -> str:
+        """return lowercase name"""
+        return self.name.lower()
 
 
 @dataclass
@@ -146,16 +150,21 @@ class UVMetricPKaT3RParser(BaseT3RParser):
             "sample": self.sample_name,
             "assay_name": self.assay_name,
             "assay_quality": self.assay_quality,
-            "pka": [result.value for result in self.pka_results],
-            "std": [result.std for result in self.pka_results],
-            "ionic_strength": [result.ionic_strength for result in self.pka_results],
-            "temp": [result.temperature for result in self.pka_results],
+            "pka_list": [result.value for result in self.pka_results],
+            "std_list": [result.std for result in self.pka_results],
+            "ionic_strength_list": [
+                result.ionic_strength for result in self.pka_results
+            ],
+            "temp_list": [result.temperature for result in self.pka_results],
+            "reformatted_pkas": self.t3_formatted_results,
         }
 
     @property
     def _fastdpas_mean_results(self) -> list[PkaResult]:
         """
         pKa result(s) from the "FastDpasMeanResult" element
+        Assumes that multiple pKas are found as space-separated values under the element named:
+        "ProcessedData.FastDPasMeanResult.MeanPkaResults"
         """
         obj = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
             "FastDpasMeanResult"
@@ -181,6 +190,8 @@ class UVMetricPKaT3RParser(BaseT3RParser):
     def _dielectric_fit_result(self) -> list[PkaResult]:
         """
         Get pKa results from the YasudaShedlovskyResult.DielectircFit element
+        Assumes that pKa values are found as elements under
+        "ProcessedData.YasudaShedlovskyResult.DielectricFit"
         """
         obj = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
             "YasudaShedlovskyResult"
@@ -204,7 +215,9 @@ class UVMetricPKaT3RParser(BaseT3RParser):
     @property
     def pka_results(self) -> list[PkaResult]:
         """
-        Get measured pKa results
+        Get measured pKa results.
+        Look under the "FastDPasMeanResult" tree for results first, then if not found,
+        look under "ProcessedData.YasudaShedlovskyResult.DielectricFit"
         """
         try:
             results = self._fastdpas_mean_results
@@ -234,6 +247,21 @@ class UVMetricPKaT3RParser(BaseT3RParser):
             )
             for pred in obj
         ]
+
+    @property
+    def t3_formatted_results(self) -> str:
+        """
+        SririusT3-formatted pKa results
+        The format should be comma-separated values of <type>,<value>, e.g.,
+        "acid,2.86,base,9.64"
+        This assumes that the measured results are in the same order as the predicted pKas
+        """
+        predicted_pkas = self.predicted_pka
+        measured_pkas = self.pka_results
+        return ",".join(
+            f"{pred.pka_type.lower},{meas.value}"
+            for pred, meas in zip(predicted_pkas, measured_pkas)
+        )
 
 
 class LogPT3RParser(BaseT3RParser):
