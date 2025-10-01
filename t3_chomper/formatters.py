@@ -1,3 +1,4 @@
+import enum
 import pathlib
 
 import pandas as pd
@@ -30,9 +31,21 @@ def generate_registration_pka_file(
     """
 
     regi_df = pd.read_csv(registration_csv)
-    if registration_id_col not in regi_df.columns:
-        raise ValueError(
-            f"Expected column {registration_id_col} is missing in {registration_csv}"
+    regi_required_columns = [
+        registration_id_col,
+        "Registry Number",
+        "Batch Name",
+        "Well",
+        "MW",
+    ]
+    for col in regi_required_columns:
+        if col not in regi_df.columns:
+            raise ValueError(
+                f"Expected column {registration_id_col} is missing in {registration_csv}"
+            )
+    if "batch_sample" not in regi_df.columns:
+        regi_df["batch_sample"] = regi_df.apply(
+            lambda x: f"""{x["Registry Number"]}-{x["Batch Name"]}""", axis=1
         )
 
     pka_df = pd.read_csv(pka_csv)
@@ -87,8 +100,9 @@ class SiriusT3CSVGenerator:
 
     def _load_input_file(self) -> pd.DataFrame:
         df = pd.read_csv(self._input_csv)
-        if self._pkas_col not in df.columns:
-            raise ValueError(f"Column {self._pkas_col} not found in {self._input_csv}")
+        for col in [self._pkas_col, self._sample_id_col]:
+            if col not in df.columns:
+                raise ValueError(f"""Column "{col}" not found in {self._input_csv}""")
         missing_pkas_count = df[self._pkas_col].isna().sum()
         if missing_pkas_count:
             missing_row_ids = df[df[self._pkas_col].isna()][self._sample_id_col]
@@ -109,8 +123,8 @@ class SiriusT3CSVGenerator:
                     [
                         f"{getattr(row, self._sample_id_col)}",
                         f"{getattr(row, self._pkas_col).rstrip(',')}",
-                        f"""SYM,{getattr(row, "well")}""",
-                        f"""MW,{getattr(row, "mw")}""",
+                        f"""SYM,{getattr(row, "Well")}""",
+                        f"""MW,{getattr(row, "MW")}""",
                     ]
                 )
             )
@@ -205,3 +219,12 @@ class LogPGenerator(SiriusT3CSVGenerator):
             lines.append("Clean Up")
             lines.append("Clean Up")
         return "\n".join(lines)
+
+
+class TrayFormat(enum.Enum):
+    """
+    Enum of defined tray formats
+    """
+
+    FastUVPSKA = FastUVPSKAGenerator
+    LogP = LogPGenerator

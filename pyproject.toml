@@ -16,7 +16,8 @@ dev = [
 ]
 
 [tool.poetry.scripts]
-t3pka = "t3_chomper.t3_extractor:pka"
+t3_extract = "t3_chomper.t3_extractor:t3_extract"
+t3_gencsv = "t3_chomper.csv_generator:t3_gencsv"
 
 [build-system]
 requires = ["poetry-core"]
