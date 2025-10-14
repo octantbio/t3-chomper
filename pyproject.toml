@@ -12,7 +12,8 @@ xmltodict = "^0.13"
 
 [dependency-groups]
 dev = [
-    "black (>=25.1.0,<26.0.0)"
+    "black (>=25.1.0,<26.0.0)",
+    "pytest (>=8.4.2,<9.0.0)"
 ]
 
 [tool.poetry.scripts]
