@@ -113,7 +113,10 @@ class BaseT3RParser:
 
     @property
     def assay_datetime(self) -> datetime:
-        return self._doc["DirectControlAssayResultsFile"]["Summary"]["StartTime"]
+        str_datetime = self._doc["DirectControlAssayResultsFile"]["Summary"][
+            "StartTime"
+        ]
+        return datetime.fromisoformat(str_datetime)
 
     @property
     def assay_category(self) -> AssayCategory:
