@@ -65,6 +65,7 @@ class LogPResult:
 
     value: float
     rmsd: float
+    solvent: str
 
 
 def get_assay_category(filename: Union[str, pathlib.Path]) -> AssayCategory:
@@ -284,7 +285,7 @@ class LogPT3RParser(BaseT3RParser):
             "assay_quality": self.assay_quality,
             "logp": self.logp_result.value,
             "rmsd": self.logp_result.rmsd,
-            "solvent": self.logp_solvent,
+            "solvent": self.logp_result.solvent,
         }
 
     @cached_property
@@ -296,7 +297,8 @@ class LogPT3RParser(BaseT3RParser):
         value_list = data["MultisweepPhMetricLevelResult"]["SampleValues"]["Logp"]
         # NEED TO VERIFY THIS WILL BE CORRECT - THIS JUST TAKES THE LARGER OF TWO LOGP VALUES
         value = max(float(value) for value in value_list)
-        return LogPResult(value=value, rmsd=rmsd)
+        solvent = self.logp_solvent
+        return LogPResult(value=value, rmsd=rmsd, solvent=solvent)
 
     @property
     def logp_solvent(self) -> str:
