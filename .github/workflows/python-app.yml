@@ -30,6 +30,7 @@ jobs:
         python3 -m venv $POETRY_HOME
         $POETRY_HOME/bin/pip install poetry==2.2.0
         $POETRY_HOME/bin/poetry sync --all-groups
+        eval $(poetry env activate)
     - name: Test with pytest
       run: |
         pytest
