@@ -112,7 +112,7 @@ class SiriusT3CSVGenerator:
         return df
 
     def generate_header_section(self) -> str:
-        return "ScheduleImportCSV\n\n"
+        return "ScheduleImportCsv\n\n"
 
     def generate_sample_section(self, sample_df: pd.DataFrame) -> str:
         """Generate section of the SiriusT3 CSV import file with Sample information"""
