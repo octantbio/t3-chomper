@@ -16,7 +16,8 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env: 
+      POETRY_HOME: /opt/poetry
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.10
@@ -26,7 +27,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        export POETRY_HOME=/opt/poetry
         python3 -m venv $POETRY_HOME
         $POETRY_HOME/bin/pip install poetry==2.2.0
         $POETRY_HOME/bin/poetry sync --all-groups
