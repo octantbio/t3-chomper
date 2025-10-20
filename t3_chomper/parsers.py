@@ -230,6 +230,9 @@ class UVMetricPKaT3RParser(BaseT3RParser):
                 results = self._dielectric_fit_result
             except KeyError:
                 raise KeyError(f"Could not find pKa results in file: {self.filename}")
+        for measured, predicted in zip(results, self.predicted_pka):
+            measured.pka_type = predicted.pka_type
+
         return results
 
     @property
