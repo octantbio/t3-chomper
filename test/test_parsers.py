@@ -1,9 +1,6 @@
 import datetime
 import pathlib
 
-import pytest
-
-from t3_chomper.logger import get_logger
 from t3_chomper.parsers import (
     UVMetricPKaT3RParser,
     AssayCategory,
@@ -12,20 +9,7 @@ from t3_chomper.parsers import (
     LogPT3RParser,
     LogPResult,
 )
-
-logger = get_logger(__name__)
-
-
-@pytest.fixture
-def pka_result_filename():
-    """example of a pKa result file"""
-    return r"test/data/fast_uv_OCNT-0000018-AQ-001.t3r"
-
-
-@pytest.fixture
-def logp_result_filename():
-    """example of a logP result file"""
-    return r"test/data/logp_OCNT-0000018-AQ-001_octanol.t3r"
+from test.fixtures import pka_result_filename, logp_result_filename
 
 
 def test_pka_parser(pka_result_filename):
@@ -72,6 +56,43 @@ def test_pka_parser(pka_result_filename):
     t3_formatted_results = x.t3_formatted_results
     assert isinstance(t3_formatted_results, str)
     assert t3_formatted_results == r"base,8.11591"
+
+    result_dict = x.result_dict
+    assert isinstance(result_dict, dict)
+    assert all(
+        key in result_dict
+        for key in [
+            "filename",
+            "sample",
+            "assay_name",
+            "assay_quality",
+            "pka_list",
+            "std_list",
+            "ionic_strength_list",
+            "temp_list",
+            "reformatted_pkas",
+        ]
+    )
+
+    result_list = x.result_list
+    assert isinstance(result_list, list)
+    assert len(result_list) > 0
+    assert isinstance(result_list[0], dict)
+    assert all(
+        key in result_list[0]
+        for key in [
+            "sample",
+            "filename",
+            "assay_name",
+            "assay_quality",
+            "pka_number",
+            "pka_type",
+            "pka_value",
+            "pka_std",
+            "pka_ionic_strength",
+            "pka_temperature",
+        ]
+    )
 
 
 def test_logp_parser(logp_result_filename):
