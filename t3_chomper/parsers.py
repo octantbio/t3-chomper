@@ -145,9 +145,32 @@ class UVMetricPKaT3RParser(BaseT3RParser):
     EXPECTED_ASSAY_CATEGORY = AssayCategory.PKA
 
     @property
+    def result_list(self) -> list[dict]:
+        """
+        Return result summary as a list of dict objects, one for each pKa
+        """
+        results = []
+        for pka_number, pka in enumerate(self.pka_results, start=1):
+            results.append(
+                {
+                    "sample": self.sample_name,
+                    "filename": self.filename.name,
+                    "assay_name": self.assay_name,
+                    "assay_quality": self.assay_quality,
+                    "pka_number": pka_number,
+                    "pka_type": pka.pka_type,
+                    "pka_value": pka.value,
+                    "pka_std": pka.std,
+                    "pka_ionic_strength": pka.ionic_strength,
+                    "pka_temperature": pka.temperature,
+                }
+            )
+        return results
+
+    @property
     def result_dict(self) -> dict:
         """
-        Return a result summary as a dict
+        Return a result summary as a single dict
         """
         return {
             "filename": self.filename.name,
@@ -230,6 +253,9 @@ class UVMetricPKaT3RParser(BaseT3RParser):
                 results = self._dielectric_fit_result
             except KeyError:
                 raise KeyError(f"Could not find pKa results in file: {self.filename}")
+        for measured, predicted in zip(results, self.predicted_pka):
+            measured.pka_type = predicted.pka_type
+
         return results
 
     @property

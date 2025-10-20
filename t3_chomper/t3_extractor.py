@@ -40,20 +40,23 @@ class FileOrPathExtractor:
             logger.debug(f"Parsing T3R XML file: {file}")
             if assay_category == AssayCategory.PKA:
                 pka_parser = UVMetricPKaT3RParser(file)
-                results = pka_parser.result_dict
+                # Get results as list of dict objects per pKa
+                results_list = pka_parser.result_list
+                rows.extend(results_list)
             elif assay_category == AssayCategory.LOGP:
                 logp_parser = LogPT3RParser(file)
-                results = logp_parser.result_dict
+                # Get logp result as a dict object
+                result = logp_parser.result_dict
+                rows.append(result)
             else:
                 raise ValueError(f"Unknown assay category: {assay_category}")
-            rows.append(results)
         df = pd.DataFrame(rows)
         return df
 
-    def parse_pka_files(self):
+    def parse_pka_files(self) -> pd.DataFrame:
         return self._parse_files(AssayCategory.PKA)
 
-    def parse_logp_files(self):
+    def parse_logp_files(self) -> pd.DataFrame:
         return self._parse_files(AssayCategory.LOGP)
 
 
