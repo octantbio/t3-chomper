@@ -10,7 +10,7 @@ logger = get_logger(__name__)
 
 def convert_long_pka_df(
     long_df: pd.DataFrame,
-    compound_col: str = "vendor_id",
+    id_col: str = "vendor_id",
     pka_col: str = "pka_value",
     pka_type_col: str = "pka_type",
     reformatted_pka_col: str = "reformatted_pkas",
@@ -25,23 +25,25 @@ def convert_long_pka_df(
 
     Args:
         long_df: long-format pKa file, i.e. multiple pKas on multiple lines
-        compound_col: column name with compound name
+        id_col: column name with compound name
         pka_col: column name with pKa value
         pka_type_col: column name with pKa type (acid or base)
         reformatted_pka_col: column name to generate with reformatted pKa string
     """
-    for col in [compound_col, pka_col, pka_type_col]:
+    for col in [id_col, pka_col, pka_type_col]:
         if col not in long_df.columns:
             raise ValueError(f"Missing expected column {col} ")
     # Sort by compound and ascending pKa value
-    long_df.sort_values([compound_col, pka_col], inplace=True)
+    long_df.sort_values([id_col, pka_col], inplace=True)
     # Aggregate to one row per compound, with a list for pKa types and values
-    agg_df = (
-        long_df.groupby(compound_col)[["pka_type", pka_col]].agg(list).reset_index()
-    )
+    agg_df = long_df.groupby(id_col)[[pka_type_col, pka_col]].agg(list).reset_index()
     # Generate reformatted pKa string
     agg_df[reformatted_pka_col] = agg_df.apply(
-        lambda x: ",".join(f"{t.upper()},{v}" for t, v in zip(x.pka_type, x.pka_value))
+        lambda x: ",".join(
+            f"{t.upper()},{v}"
+            for t, v in zip(getattr(x, pka_type_col), getattr(x, pka_col))
+        ),
+        axis=1,
     )
     return agg_df
 
