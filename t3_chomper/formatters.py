@@ -78,7 +78,10 @@ class SiriusT3CSVGenerator:
         input_csv: input data file with compound IDs and estimated pKas
         pkas_col: name for the column containing the estimated pKas
         sample_id_col: name for column containing the sample names
-
+        fw_col: name for column with formula weights
+        mg_col: name for column with mass in mg
+        well_col: name for column with well position
+        mw_col: name for column with molecular weight
     """
 
     SAMPLES_PER_TRAY = 48
@@ -88,10 +91,19 @@ class SiriusT3CSVGenerator:
         input_csv: str,
         pkas_col: str = "reformatted_pkas",
         sample_id_col: str = "batch_sample",
+        fw_col: str = "fw",
+        mg_col: str = "mg",
+        well_col: str = "well",
+        mw_col: str = "mw",
     ):
         self._input_csv = input_csv
         self._pkas_col = pkas_col
         self._sample_id_col = sample_id_col
+        self._fw_col = fw_col
+        self._mg_col = mg_col
+        self._well_col = well_col
+        self._mw_col = mw_col
+
         self._df = self._load_input_file()
 
     @property
@@ -100,7 +112,8 @@ class SiriusT3CSVGenerator:
 
     def _load_input_file(self) -> pd.DataFrame:
         df = pd.read_csv(self._input_csv)
-        for col in [self._pkas_col, self._sample_id_col]:
+        df.rename(columns=str.lower, inplace=True)
+        for col in [self._pkas_col, self._sample_id_col, self._well_col, self._mw_col]:
             if col not in df.columns:
                 raise ValueError(f"""Column "{col}" not found in {self._input_csv}""")
         missing_pkas_count = df[self._pkas_col].isna().sum()
@@ -123,8 +136,8 @@ class SiriusT3CSVGenerator:
                     [
                         f"{getattr(row, self._sample_id_col)}",
                         f"{getattr(row, self._pkas_col).rstrip(',')}",
-                        f"""SYM,{getattr(row, "Well")}""",
-                        f"""MW,{getattr(row, "MW")}""",
+                        f"""SYM,{getattr(row, self._well_col)}""",
+                        f"""MW,{getattr(row, self._mw_col)}""",
                     ]
                 )
             )
@@ -152,9 +165,10 @@ class SiriusT3CSVGenerator:
         output_path.mkdir()
 
         for idx, tray_df in enumerate(self._get_split_dfs()):
+            tray_name = f"""{output_dir.strip("/")}_{idx}"""
             outstr = self.generate_header_section()
             outstr += self.generate_sample_section(tray_df)
-            outstr += f"""\n\nTRAY,{output_dir.strip("/")}_{idx}\n"""
+            outstr += f"""\n\nTRAY,{tray_name}\n"""
             outstr += self.generate_experiment_section(tray_df)
 
             output_filename = output_path / f"tray_{idx}.csv"
@@ -193,6 +207,62 @@ class FastUVPSKAGenerator(SiriusT3CSVGenerator):
         return "Fast UV Buffer Calib MeOH\n" + "\n".join(lines)
 
 
+class UVMetricPSKAGenerator(SiriusT3CSVGenerator):
+    SAMPLES_PER_TRAY = 24
+
+    def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
+        """
+        Generate experiment section for a UV-metric psKa experiment tray.
+        Tray has 24 samples, a calibration assay is automatically added before each sample.
+        This assumes that each sample is at 0.005 mL and 10 mM in pure DMSO
+        """
+        lines = []
+        for row in sample_df.itertuples():
+            sample_name = getattr(row, self._sample_id_col)
+            lines.append(
+                ",".join(
+                    [
+                        "UV-metric psKa",
+                        f"title,UV-metric psKa of {sample_name} by volume",
+                        f"{sample_name}",  # sample
+                        f"{sample_name},1",  # component and stoichiometry
+                        "volume,0.005",
+                        "Concentration,10",
+                        "DMSO,1",
+                    ]
+                )
+            )
+        return "\n".join(lines)
+
+
+class PHMetricPSKAGenerator(SiriusT3CSVGenerator):
+    SAMPLES_PER_TRAY = 24
+
+    def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
+        """
+        Generate experiment section for a pH-metric psKa experiment tray.
+        Tray has 24 samples, with a "Clean Up" step after every sample.
+        Samples are solid powder, so mg is specified.
+        """
+        lines = []
+        for row in sample_df.itertuples():
+            sample_name = getattr(row, self._sample_id_col)
+            lines.append(
+                ",".join(
+                    [
+                        "pH-metric psKa",
+                        f"title,pH-metric psKa of {sample_name} by weight",
+                        f"{sample_name}",  # sample
+                        f"{sample_name},1",  # component and stoichiometry
+                        f"""fw,{getattr(row, self._fw_col)}""",
+                        f"""mg,{getattr(row, self._mg_col)}""",
+                    ]
+                )
+            )
+            lines.append("Clean Up")
+        return "\n".join(lines)
+
+
 class LogPGenerator(SiriusT3CSVGenerator):
     SAMPLES_PER_TRAY = 16
 
@@ -211,8 +281,8 @@ class LogPGenerator(SiriusT3CSVGenerator):
                         f"title,logP of {sample_name}",
                         f"{sample_name}",
                         f"{sample_name},1",
-                        f"""fw,{getattr(row, "fw")}""",
-                        f"""mg, {getattr(row, "mg")}""",
+                        f"""fw,{getattr(row, self._fw_col)}""",
+                        f"""mg, {getattr(row, self._mg_col)}""",
                     ]
                 )
             )
@@ -227,4 +297,6 @@ class TrayFormat(enum.Enum):
     """
 
     FastUVPSKA = FastUVPSKAGenerator
+    PHMetric = PHMetricPSKAGenerator
+    UVMetric = UVMetricPSKAGenerator
     LogP = LogPGenerator
