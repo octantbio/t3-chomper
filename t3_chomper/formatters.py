@@ -8,6 +8,44 @@ from t3_chomper.logger import get_logger
 logger = get_logger(__name__)
 
 
+def convert_long_pka_df(
+    long_df: pd.DataFrame,
+    compound_col: str = "vendor_id",
+    pka_col: str = "pka_value",
+    pka_type_col: str = "pka_type",
+    reformatted_pka_col: str = "reformatted_pkas",
+) -> pd.DataFrame:
+    """
+    Convert long-format pKa data file to short-format
+    long-format data files have multiple rows for each pKa, with columns like 'pka_number', 'pka_type', 'pka_value'
+    short-format has one row per compound and a column containing a string representation of multiple pKas
+    The string representation of multiple pKas has the format:
+        <type1>,<value1>,<type2>,<value2>,...
+    Where the types are either ACID or BASE and the multiple elements should be sorted by increasing value.
+
+    Args:
+        long_df: long-format pKa file, i.e. multiple pKas on multiple lines
+        compound_col: column name with compound name
+        pka_col: column name with pKa value
+        pka_type_col: column name with pKa type (acid or base)
+        reformatted_pka_col: column name to generate with reformatted pKa string
+    """
+    for col in [compound_col, pka_col, pka_type_col]:
+        if col not in long_df.columns:
+            raise ValueError(f"Missing expected column {col} ")
+    # Sort by compound and ascending pKa value
+    long_df.sort_values([compound_col, pka_col], inplace=True)
+    # Aggregate to one row per compound, with a list for pKa types and values
+    agg_df = (
+        long_df.groupby(compound_col)[["pka_type", pka_col]].agg(list).reset_index()
+    )
+    # Generate reformatted pKa string
+    agg_df[reformatted_pka_col] = agg_df.apply(
+        lambda x: ",".join(f"{t.upper()},{v}" for t, v in zip(x.pka_type, x.pka_value))
+    )
+    return agg_df
+
+
 def generate_registration_pka_file(
     registration_csv: str,
     pka_csv: str,
@@ -49,9 +87,13 @@ def generate_registration_pka_file(
         )
 
     pka_df = pd.read_csv(pka_csv)
-    for col in [pka_id_col, pka_pkas_col]:
-        if col not in pka_df.columns:
-            raise ValueError(f"Expected column {col} is missing in {pka_csv}")
+    if pka_id_col not in pka_df.columns:
+        raise ValueError(f"Expected column {pka_id_col} is missing in {pka_csv}")
+
+    # If the pKa data file is in the long-format with one row per pKa, then try to reformat
+    # to generate a 'short-format' pKa file with one row per compound
+    if pka_pkas_col not in pka_df.columns:
+        pka_df = convert_long_pka_df(pka_df, compound_col=pka_id_col)
 
     pka_df = pka_df[[pka_id_col, pka_pkas_col]].rename(
         columns={pka_id_col: registration_id_col}
