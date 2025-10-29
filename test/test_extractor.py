@@ -11,7 +11,10 @@ def test_pka_extractor(pka_result_filename):
     assert isinstance(x._t3_files, list)
     assert len(x._t3_files) == 1
     assert x._t3_files[0] == pathlib.Path(pka_result_filename)
-    df = x.parse_pka_files()
+    x.parse_pka_files()
+    df = x.get_results_df()
+    assert x.num_succeeded == 1
+    assert x.num_failed == 0
     assert isinstance(df, pd.DataFrame)
     assert all(
         col in df.columns
@@ -39,8 +42,11 @@ def test_logp_extractor(logp_result_filename):
     assert isinstance(x._t3_files, list)
     assert len(x._t3_files) == 1
     assert x._t3_files[0] == pathlib.Path(logp_result_filename)
-    df = x.parse_logp_files()
+    x.parse_logp_files()
+    df = x.get_results_df()
     assert isinstance(df, pd.DataFrame)
+    assert x.num_succeeded == 1
+    assert x.num_failed == 0
     assert all(
         col in df.columns
         for col in [
