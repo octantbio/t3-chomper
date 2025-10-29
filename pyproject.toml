@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "t3-chomper"
-version = "0.1.5"
+version = "0.1.6"
 description = "Parse pKa data from Sirus T3 XML files"
 authors = ["hugo.macdermott-opeskin@omsf.io", "johncfaver@gmail.com"]
 

@@ -101,14 +101,18 @@ def generate_registration_pka_file(
         columns={pka_id_col: registration_id_col}
     )
 
+    # left join on regi file, unmatched rows will have null pKa values
     merged_df = pd.merge(regi_df, pka_df, how="left", on=registration_id_col)
 
+    # Warn if there are rows with unmatched pKa values
     missing_row_count = merged_df[pka_pkas_col].isna().sum()
     if missing_row_count:
         missing_row_ids = merged_df[merged_df[pka_pkas_col].isna()][registration_id_col]
-        raise ValueError(
-            f"{missing_row_count} rows have missing data: {missing_row_ids}"
+        logger.warning(
+            f"{missing_row_count} rows have missing pKa data and will be dropped: {missing_row_ids}"
         )
+    # Drop rows with no pKa data
+    merged_df.dropna(subset=pka_pkas_col, inplace=True)
 
     return merged_df
 
