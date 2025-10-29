@@ -38,7 +38,7 @@ class FileOrPathExtractor:
             self.num_files = len(self._t3_files)
             logger.info(f"Found {self.num_files} t3r results files.")
         else:
-            self._t3_files = [path]
+            self._t3_files = [self.path]
             self.num_files = 1
             logger.info(f"Found 1 t3r result file.")
 
