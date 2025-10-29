@@ -33,31 +33,43 @@ class FileOrPathExtractor:
             self._t3_files = [path]
             logger.info(f"Found 1 t3r result file.")
 
-    def _parse_files(self, assay_category: AssayCategory) -> pd.DataFrame:
-        """ """
+    def parse_pka_files(self) -> pd.DataFrame:
+        """
+        Parse pKa result data files and return a dataframe of parsed results
+        """
         rows = []
+        failed_files = []
         for file in self._t3_files:
             logger.debug(f"Parsing T3R XML file: {file}")
-            if assay_category == AssayCategory.PKA:
+            try:
                 pka_parser = UVMetricPKaT3RParser(file)
                 # Get results as list of dict objects per pKa
                 results_list = pka_parser.result_list
                 rows.extend(results_list)
-            elif assay_category == AssayCategory.LOGP:
+            except Exception as e:
+                logger.error(f"Error parsing data: {e}")
+                failed_files.append(file)
+        df = pd.DataFrame(rows)
+        return df
+
+    def parse_logp_files(self) -> pd.DataFrame:
+        """
+        Parse logp result data files and return a dataframe of parsed results
+        """
+        rows = []
+        failed_files = []
+        for file in self._t3_files:
+            logger.debug(f"Parsing T3R XML file: {file}")
+            try:
                 logp_parser = LogPT3RParser(file)
                 # Get logp result as a dict object
                 result = logp_parser.result_dict
                 rows.append(result)
-            else:
-                raise ValueError(f"Unknown assay category: {assay_category}")
+            except Exception as e:
+                logger.error(f"Error parsing data: {e}")
+                failed_files.append(file)
         df = pd.DataFrame(rows)
         return df
-
-    def parse_pka_files(self) -> pd.DataFrame:
-        return self._parse_files(AssayCategory.PKA)
-
-    def parse_logp_files(self) -> pd.DataFrame:
-        return self._parse_files(AssayCategory.LOGP)
 
 
 @click.command()
@@ -82,6 +94,7 @@ def t3_extract(path, output, protocol):
         df = extractor.parse_logp_files()
     else:
         raise ValueError(f"Unknown Assay category: {protocol}")
+
     if output:
         logger.info(f"Finished parsing, writing to {output}")
         df.to_csv(output, index=False)
