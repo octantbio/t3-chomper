@@ -81,7 +81,7 @@ def generate_registration_pka_file(
     for col in regi_required_columns:
         if col not in regi_df.columns:
             raise ValueError(
-                f"Expected column {registration_id_col} is missing in {registration_csv}"
+                f"Expected column {col} is missing in {registration_csv}"
             )
     if "batch_sample" not in regi_df.columns:
         regi_df["batch_sample"] = regi_df.apply(

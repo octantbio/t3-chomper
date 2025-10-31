@@ -1,0 +1,6 @@
+#!/Users/marco2/projects/t3-chomper/.venv/bin/python
+import sys
+from t3_chomper.csv_generator import t3_gencsv
+
+if __name__ == '__main__':
+    sys.exit(t3_gencsv())
