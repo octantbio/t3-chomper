@@ -95,7 +95,7 @@ def generate_registration_pka_file(
     # If the pKa data file is in the long-format with one row per pKa, then try to reformat
     # to generate a 'short-format' pKa file with one row per compound
     if pka_pkas_col not in pka_df.columns:
-        pka_df = convert_long_pka_df(pka_df, compound_col=pka_id_col)
+        pka_df = convert_long_pka_df(pka_df, id_col=pka_id_col)
 
     pka_df = pka_df[[pka_id_col, pka_pkas_col]].rename(
         columns={pka_id_col: registration_id_col}
