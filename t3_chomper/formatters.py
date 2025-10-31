@@ -192,7 +192,17 @@ class SiriusT3CSVGenerator:
         return "\n".join(lines)
 
     def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
-        raise NotImplementedError
+        lines = []
+        for row in sample_df.itertuples():
+            sample_id = getattr(row, self._sample_id_col)
+            mg = getattr(row, self._mg_col)
+            fw = getattr(row, self._mw_col)
+            lines.append(
+                f"pH-metric medium logP octanol,title,logP of {sample_id} by weight,{sample_id},{sample_id},1,fw,{fw},mg,{mg}"
+            )
+            lines.append("Clean Up")
+            lines.append("Clean Up")
+        return "\n".join(lines)
 
     @property
     def num_samples(self):
