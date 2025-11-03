@@ -32,7 +32,7 @@ from t3_chomper.formatters import (
     "--sample-col",
     required=False,
     default="sample",
-    type="str",
+    type=str,
     help="Name of sample/ID column. Used for joining across files.",
 )
 @click.option(
