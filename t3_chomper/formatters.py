@@ -1,5 +1,6 @@
 import enum
 import pathlib
+from typing import Union
 
 import pandas as pd
 
@@ -32,6 +33,7 @@ def convert_long_pka_df(
     """
     for col in [id_col, pka_col, pka_type_col]:
         if col not in long_df.columns:
+            logger.error(f"Missing expected column {col} ")
             raise ValueError(f"Missing expected column {col} ")
     # Sort by compound and ascending pKa value
     long_df.sort_values([id_col, pka_col], inplace=True)
@@ -51,9 +53,8 @@ def convert_long_pka_df(
 def generate_registration_pka_file(
     registration_csv: str,
     pka_csv: str,
-    registration_id_col: str = "ID",
-    pka_id_col: str = "vendor_id",
-    pka_pkas_col: str = "reformatted_pkas",
+    filter_file: Union[str, None] = None,
+    sample_col: str = "sample",
 ) -> pd.DataFrame:
     """
     From a CSV of registration data and a CSV of estimated pKa data, return a merged dataframe
@@ -62,57 +63,76 @@ def generate_registration_pka_file(
         registration_csv: registration data file. Expects compounds to be annotated with "ID" column
         pka_csv: pKa estimate data file. Expected compounds to be annotated with a "vendor_id" column, and
             pKa estimates formatted for Pion Sirius T3 input files under a column named "reformatted_pkas"
-        registration_id_col: name of the column in the registration file with compound IDs
-        pka_id_col: name of the column in the pKa data file with compound IDs
-        pka_pkas_col: name of the column in the pKa data file with pKa data
-
+        filter_file: file with sample names that should be considered, used to filter a larger regi file.
+        sample_fol: name of column with unique sample names
     Returns:
         Merged dataframe with columns from the registration_csv and the estimated pKa data from the pKa data file
     """
 
     regi_df = pd.read_csv(registration_csv)
+    logger.info(f"Read regi file {registration_csv} with {len(regi_df)} rows.")
+
+    # If sample_col is not present, but registry number and batch name are, construct sample_col
+    if sample_col not in regi_df.columns:
+        if "Registry Number" in regi_df.columns and "Batch Name" in regi_df.columns:
+            regi_df[sample_col] = regi_df.apply(
+                lambda x: f"""{x["Registry Number"]}-{x["Batch Name"]}""", axis=1
+            )
+
+    # Regi file must have sample_col, well and MW columns
     regi_required_columns = [
-        registration_id_col,
-        "Registry Number",
-        "Batch Name",
+        sample_col,
         "Well",
         "MW",
     ]
     for col in regi_required_columns:
         if col not in regi_df.columns:
-            raise ValueError(
-                f"Expected column {registration_id_col} is missing in {registration_csv}"
-            )
-    if "batch_sample" not in regi_df.columns:
-        regi_df["batch_sample"] = regi_df.apply(
-            lambda x: f"""{x["Registry Number"]}-{x["Batch Name"]}""", axis=1
-        )
+            msg = f"Expected column {col} is missing in {registration_csv}"
+            logger.error(msg)
+            raise ValueError(msg)
 
+    # Handle use of filter file to sub-select rows from regi file
+    if filter_file is not None:
+        filter_df = pd.read_csv(filter_file)
+        logger.info(f"Read filter file {filter_file} with {len(filter_df)} rows.")
+        if sample_col not in filter_df:
+            msg = f"Expected column {sample_col} in {filter_file}"
+            logger.error(msg)
+            raise ValueError(msg)
+        regi_df = pd.merge(regi_df, filter_df, how="inner", on=sample_col)
+        num_pass_filter = len(regi_df)
+        if num_pass_filter == 0:
+            msg = f"No matches between regi file and filter file!"
+            logger.error(msg)
+            raise ValueError(msg)
+        logger.info(f"After using filter file, {len(regi_df)} rows remain.")
+
+    # Read pKa file
     pka_df = pd.read_csv(pka_csv)
-    if pka_id_col not in pka_df.columns:
-        raise ValueError(f"Expected column {pka_id_col} is missing in {pka_csv}")
+    if sample_col not in pka_df.columns:
+        raise ValueError(f"Expected column {sample_col} is missing in {pka_csv}")
 
     # If the pKa data file is in the long-format with one row per pKa, then try to reformat
     # to generate a 'short-format' pKa file with one row per compound
-    if pka_pkas_col not in pka_df.columns:
-        pka_df = convert_long_pka_df(pka_df, compound_col=pka_id_col)
+    pkas_col = "reformatted_pkas"
+    if pkas_col not in pka_df.columns:
+        pka_df = convert_long_pka_df(pka_df, id_col=sample_col)
 
-    pka_df = pka_df[[pka_id_col, pka_pkas_col]].rename(
-        columns={pka_id_col: registration_id_col}
-    )
+    pka_df = pka_df[[sample_col, pkas_col]]
 
     # left join on regi file, unmatched rows will have null pKa values
-    merged_df = pd.merge(regi_df, pka_df, how="left", on=registration_id_col)
+    merged_df = pd.merge(regi_df, pka_df, how="left", on=sample_col)
 
     # Warn if there are rows with unmatched pKa values
-    missing_row_count = merged_df[pka_pkas_col].isna().sum()
-    if missing_row_count:
-        missing_row_ids = merged_df[merged_df[pka_pkas_col].isna()][registration_id_col]
+    missing_row_count = merged_df[pkas_col].isna().count()
+    if missing_row_count > 0:
+        missing_row_ids = merged_df[merged_df[pkas_col].isna()][sample_col]
         logger.warning(
             f"{missing_row_count} rows have missing pKa data and will be dropped: {missing_row_ids}"
         )
     # Drop rows with no pKa data
-    merged_df.dropna(subset=pka_pkas_col, inplace=True)
+    merged_df.dropna(subset=pkas_col, inplace=True)
+    logger.info(f"Merged data has {len(merged_df)} rows with pKa data.")
 
     return merged_df
 
@@ -138,7 +158,7 @@ class SiriusT3CSVGenerator:
         self,
         input_csv: str,
         pkas_col: str = "reformatted_pkas",
-        sample_id_col: str = "batch_sample",
+        sample_id_col: str = "sample",
         fw_col: str = "fw",
         mg_col: str = "mg",
         well_col: str = "well",
