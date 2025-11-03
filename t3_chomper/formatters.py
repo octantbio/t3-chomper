@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import enum
 import pathlib
 from typing import Union
@@ -140,7 +141,7 @@ def generate_registration_pka_file(
     return merged_df
 
 
-class SiriusT3CSVGenerator:
+class SiriusT3CSVGenerator(ABC):
     """
     Abstract class used to generate CSV import file(s) for loading samples into a SiriusT3 instrument.
     Subclasses will have different implementations for writing the experimental sections in the generated CSV files.
@@ -214,6 +215,7 @@ class SiriusT3CSVGenerator:
             )
         return "\n".join(lines)
 
+    @abstractmethod
     def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
         raise NotImplementedError
 
