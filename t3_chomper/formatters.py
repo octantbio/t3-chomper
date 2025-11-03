@@ -103,7 +103,7 @@ def generate_registration_pka_file(
             msg = f"Expected column {sample_col} in {filter_file}"
             logger.error(msg)
             raise ValueError(msg)
-        regi_df = pd.merge(regi_df, filter_df, how="inner", on=sample_col)
+        regi_df = regi_df[regi_df[sample_col].isin(filter_df[sample_col])]
         num_pass_filter = len(regi_df)
         if num_pass_filter == 0:
             msg = f"No matches between regi file and filter file!"
