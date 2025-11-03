@@ -144,7 +144,13 @@ def generate_registration_pka_file(
 class SiriusT3CSVGenerator(ABC):
     """
     Abstract class used to generate CSV import file(s) for loading samples into a SiriusT3 instrument.
-    Subclasses will have different implementations for writing the experimental sections in the generated CSV files.
+    Subclasses represent different tray formats and will have different implementations for writing the
+    experimental sections in the generated CSV files.
+
+    Subclasses must implement:
+        - generate_experiment_section(self, sample_df: pd.DataFrame)
+    Subclasses may need to override:
+        - additional_required_columns(self) -> list[str]:
 
     Args:
         input_csv: input data file with compound IDs and estimated pKas
@@ -182,12 +188,27 @@ class SiriusT3CSVGenerator(ABC):
     def input_csv(self) -> str:
         return self._input_csv
 
+    @property
+    def base_required_columns(self) -> list[str]:
+        """Return list of columns that are always required for any tray format"""
+        return [self._sample_id_col, self._mw_col, self._well_col, self._pkas_col]
+
+    @property
+    def additional_required_columns(self) -> list[str]:
+        """
+        Return a list of additional expected columns in the input csv.
+        Subclasses for different tray formats may require additional columns than those in the base required columns
+        """
+        return []
+
     def _load_input_file(self) -> pd.DataFrame:
         df = pd.read_csv(self._input_csv)
         df.rename(columns=str.lower, inplace=True)
-        for col in [self._pkas_col, self._sample_id_col, self._well_col, self._mw_col]:
+        for col in self.base_required_columns + self.additional_required_columns:
             if col not in df.columns:
-                raise ValueError(f"""Column "{col}" not found in {self._input_csv}""")
+                msg = f"""Column "{col}" not found in regi file"""
+                logger.error(msg)
+                raise ValueError(msg)
         missing_pkas_count = df[self._pkas_col].isna().sum()
         if missing_pkas_count:
             missing_row_ids = df[df[self._pkas_col].isna()][self._sample_id_col]
@@ -217,6 +238,7 @@ class SiriusT3CSVGenerator(ABC):
 
     @abstractmethod
     def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
+        """Generate the experiment section, which defines which assay protocol to apply to each well"""
         raise NotImplementedError
 
     @property
@@ -311,6 +333,13 @@ class UVMetricPSKAGenerator(SiriusT3CSVGenerator):
 class PHMetricPSKAGenerator(SiriusT3CSVGenerator):
     SAMPLES_PER_TRAY = 24
 
+    @property
+    def additional_required_columns(self) -> list[str]:
+        """
+        We need to specify mass in mg and formula weight
+        """
+        return [self._fw_col, self._mg_col]
+
     def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
         """
         Generate experiment section for a pH-metric psKa experiment tray.
@@ -338,6 +367,13 @@ class PHMetricPSKAGenerator(SiriusT3CSVGenerator):
 
 class LogPGenerator(SiriusT3CSVGenerator):
     SAMPLES_PER_TRAY = 16
+
+    @property
+    def additional_required_columns(self) -> list[str]:
+        """
+        We need to specify formula weight and mass in mg
+        """
+        return [self._fw_col, self._mg_col]
 
     def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
         """
