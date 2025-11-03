@@ -128,7 +128,7 @@ def generate_registration_pka_file(
     merged_df = pd.merge(regi_df, pka_df, how="left", on=sample_col)
 
     # Warn if there are rows with unmatched pKa values
-    missing_row_count = merged_df[pkas_col].isna().count()
+    missing_row_count = merged_df[pkas_col].isna().sum()
     if missing_row_count > 0:
         missing_row_ids = merged_df[merged_df[pkas_col].isna()][sample_col]
         logger.warning(
