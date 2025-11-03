@@ -69,21 +69,24 @@ def generate_registration_pka_file(
         Merged dataframe with columns from the registration_csv and the estimated pKa data from the pKa data file
     """
 
-    regi_df = pd.read_csv(registration_csv)
+    sample_col = sample_col.lower()
+
+    # convert regi file columns to lowercase
+    regi_df = pd.read_csv(registration_csv).rename(columns=str.lower)
     logger.info(f"Read regi file {registration_csv} with {len(regi_df)} rows.")
 
-    # If sample_col is not present, but registry number and batch name are, construct sample_col
+    # If sample_col is not present, but registry number and batch name are, construct sample_col from those
     if sample_col not in regi_df.columns:
-        if "Registry Number" in regi_df.columns and "Batch Name" in regi_df.columns:
+        if "registry number" in regi_df.columns and "batch name" in regi_df.columns:
             regi_df[sample_col] = regi_df.apply(
-                lambda x: f"""{x["Registry Number"]}-{x["Batch Name"]}""", axis=1
+                lambda x: f"""{x["registry number"]}-{x["batch name"]}""", axis=1
             )
 
     # Regi file must have sample_col, well and MW columns
     regi_required_columns = [
         sample_col,
-        "Well",
-        "MW",
+        "well",
+        "mw",
     ]
     for col in regi_required_columns:
         if col not in regi_df.columns:
@@ -93,7 +96,7 @@ def generate_registration_pka_file(
 
     # Handle use of filter file to sub-select rows from regi file
     if filter_file is not None:
-        filter_df = pd.read_csv(filter_file)
+        filter_df = pd.read_csv(filter_file).rename(columns=str.lower)
         logger.info(f"Read filter file {filter_file} with {len(filter_df)} rows.")
         if sample_col not in filter_df:
             msg = f"Expected column {sample_col} in {filter_file}"
@@ -108,12 +111,12 @@ def generate_registration_pka_file(
         logger.info(f"After using filter file, {len(regi_df)} rows remain.")
 
     # Read pKa file
-    pka_df = pd.read_csv(pka_csv)
+    pka_df = pd.read_csv(pka_csv).rename(columns=str.lower)
     if sample_col not in pka_df.columns:
         raise ValueError(f"Expected column {sample_col} is missing in {pka_csv}")
 
     # If the pKa data file is in the long-format with one row per pKa, then try to reformat
-    # to generate a 'short-format' pKa file with one row per compound
+    # to generate a 'short-format' pKa file with one row per compound and column "reformatted_pkas"
     pkas_col = "reformatted_pkas"
     if pkas_col not in pka_df.columns:
         pka_df = convert_long_pka_df(pka_df, id_col=sample_col)
@@ -334,7 +337,7 @@ class PHMetricPSKAGenerator(SiriusT3CSVGenerator):
 class LogPGenerator(SiriusT3CSVGenerator):
     SAMPLES_PER_TRAY = 16
 
-    def generate_experimental_section(self, sample_df: pd.DataFrame) -> str:
+    def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
         """
         Generate the experimental section for the "pH-metric medium logP octanol" template.
         This has 16 samples with 2x cleanup steps in between samples in each plate
