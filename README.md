@@ -2,9 +2,7 @@
 
 Parse data from [Pion Sirius T3 instrument](https://www.pion-inc.com/solutions/products/siriust3) XML files
 
-
 # WARNING HIGHLY WIP 
-
 
 # Instructions
 
@@ -51,19 +49,20 @@ There are several defined experimental tray layouts which can be listed by viewi
 t3_gencsv --help
 ```
 
-The **registration file** should have the following columns:
+The **registration file** should have the following columns (column names are case-insensitive):
 
-| Column          | Description                            |
-|-----------------|----------------------------------------|
-| ID              | compound ID (must match pKa data file) |
-| Registry Number | compound name in registry              |
-| Batch Name      | Name/number of compound batch          |
-| Well            | well in plate                          |
-| MW              | molecular weight                       |
-| FW              | formula weight                         | 
-| mg              | mass in mg                             |
+| Column                       | Description                                   |
+|------------------------------|-----------------------------------------------|
+| sample                       | compound/sample ID (must match pKa data file) |
+| well                         | well in plate                                 |
+| mw                           | molecular weight                              |
+| fw                           | formula weight                                | 
+| mg                           | mass in mg                                    |
+| registry number *(optional)* | compound name in registry                     |
+| batch name *(optional)*      | Name/number of compound batch                 |
 
-
+If the **sample** column is absent, but there are columns for **registry number** and **batch name**, they will be 
+joined with a hyphen to produce a new "sample" column.
 
 The **pKa data file** can be in one of two formats: 
 
@@ -74,7 +73,7 @@ It uses the same comma-separated format that the T3 instrument uses.
 
 | Column           | Description                                                                         |
 |------------------|-------------------------------------------------------------------------------------|
-| vendor_id        | compound ID (must match registration file)                                          |
+| sample           | compound/sample ID (must match registration file)                                   |
 | reformatted_pkas | comma-separated list of pKas and types in ascending order: e.g. "ACID,2.5,BASE,9.3" |
 
 ### Long pKa data file format:
@@ -82,12 +81,19 @@ It uses the same comma-separated format that the T3 instrument uses.
 The long format includes one row for each pKa. 
 Compounds with multiple pKas will appear in multiple rows.
 
-| Column    | Description                                |
-|-----------|--------------------------------------------|
-| vendor_id | compound ID (must match registration file) |
-| pka_value | value of pka                               |
-| pka_type  | type of pka ("acid" or "base")             |
+| Column    | Description                                       |
+|-----------|---------------------------------------------------|
+| sample    | compound/sample ID (must match registration file) |
+| pka_value | value of pka                                      |
+| pka_type  | type of pka ("acid" or "base")                    |
 
+
+### Filtering/Limiting Entries
+
+One can limit the entries that are used in the experiment by filtering samples in the regi file 
+by including a filter file with the `--filter-file` argument. The filter file just needs one column
+**sample** that matches samples in the regi file. Only samples found in the filter file will progress
+to subsequent steps for generating experiment files.
 
 ### Available experiment layouts
 
@@ -101,9 +107,14 @@ Compounds with multiple pKas will appear in multiple rows.
 
 Files for each tray will be generated in the output directory provided with the --output argument.
 
+### Examples 
+
 ```bash
 # Generate csv experiment import files with fastuvpska format
 t3_gencsv --regi <registration file> --pka <pKa data file> --protocol fastuvpska --output <new_pka_experiment_dir>
 # Generate csv experiment import files with logp format
 t3_gencsv --regi <registration file> --pka <pKa data file> --protocol logp --output <new_logp_experiment_dir>
+# Generate csv experiment import files with phmetric tray format and only include samples listed in the filter file
+t3_gencsv --regi <registration file> --filter-file <filter_file> --pka <pKa data file> --protocol phmetric --output <new_logp_experiment_dir>
+
 ```
