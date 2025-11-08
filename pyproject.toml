@@ -10,6 +10,9 @@ click = "^8.1"
 pandas = "^2.0"
 xmltodict = "^0.13"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.2"
+
 [dependency-groups]
 dev = [
     "black (>=25.1.0,<26.0.0)",

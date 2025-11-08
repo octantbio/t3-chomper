@@ -41,7 +41,21 @@ from t3_chomper.formatters import (
 @click.option(
     "--protocol", required=True, type=click.Choice(TrayFormat, case_sensitive=False)
 )
-def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol):
+@click.option(
+    "--concentration",
+    required=False,
+    default=10.0,
+    type=float,
+    help="Sample concentration in mM (default: 10.0)",
+)
+@click.option(
+    "--volume",
+    required=False,
+    default=5.0,
+    type=float,
+    help="Sample volume in µL (default: 5.0)",
+)
+def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol, concentration, volume):
     """
     Tool for generating experiment files for SiriusT3 instrument.
     Expects a registration ("regi") file with sample information, a pKa file with estimated pKas,
@@ -60,6 +74,8 @@ def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol):
         pka_csv=pka,
         filter_file=filter_file,
         sample_col=sample_col,
+        concentration_mM=concentration,
+        volume_ul=volume,
     )
     buffer = StringIO(merged_df.to_csv(None, index=False))
     formatter = protocol.value(input_csv=buffer, sample_id_col=sample_col)
