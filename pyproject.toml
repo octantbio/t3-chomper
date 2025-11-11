@@ -11,13 +11,8 @@ pandas = "^2.0"
 xmltodict = "^0.13"
 
 [tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
 pytest = "^8.4.2"
-
-[dependency-groups]
-dev = [
-    "black (>=25.1.0,<26.0.0)",
-    "pytest (>=8.4.2,<9.0.0)"
-]
 
 [tool.poetry.scripts]
 t3_extract = "t3_chomper.t3_extractor:t3_extract"
