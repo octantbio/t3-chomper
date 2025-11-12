@@ -78,7 +78,7 @@ foreach ($file in $t3rFiles) {
     if ($parts.Count -eq 3) {
         $parsedData += [PSCustomObject]@{
             date = $parts[0]
-            sample_id = $parts[1]
+            sample = $parts[1]
             assay_name = $parts[2]
         }
     } else {
