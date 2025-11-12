@@ -8,14 +8,27 @@ $pionTopFolder = "C:\New PION Data"
 # Function to browse for a CSV file
 function Get-CSVFileName {
     param([string]$Title)
-    
+
+    # Create a hidden form to act as owner and ensure TopMost behavior
+    $form = New-Object System.Windows.Forms.Form
+    $form.TopMost = $true
+    $form.StartPosition = 'Manual'
+    $form.Location = New-Object System.Drawing.Point(-2000, -2000)
+    $form.Size = New-Object System.Drawing.Size(1, 1)
+    $form.ShowInTaskbar = $false
+    $form.Show()
+
     $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
     $openFileDialog.Title = $Title
     $openFileDialog.Filter = "CSV files (*.csv)|*.csv"
     $openFileDialog.InitialDirectory = $pionTopFolder
-	$openFileDialog.TopMost = $true
-    
-    if ($openFileDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+
+    $result = $openFileDialog.ShowDialog($form)
+
+    $form.Close()
+    $form.Dispose()
+
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
         return $openFileDialog.FileName
     } else {
         return $null
