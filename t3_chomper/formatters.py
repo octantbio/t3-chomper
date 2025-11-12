@@ -175,6 +175,7 @@ class SiriusT3CSVGenerator(ABC):
         mg_col: str = "mg",
         well_col: str = "well",
         mw_col: str = "mw",
+        solvent: str = "none",
     ):
         self._input_csv = input_csv
         self._pkas_col = pkas_col
@@ -183,12 +184,17 @@ class SiriusT3CSVGenerator(ABC):
         self._mg_col = mg_col
         self._well_col = well_col
         self._mw_col = mw_col
+        self._solvent = solvent
 
         self._df = self._load_input_file()
 
     @property
     def input_csv(self) -> str:
         return self._input_csv
+
+    @property
+    def solvent(self) -> str:
+        return self._solvent
 
     @property
     def base_required_columns(self) -> list[str]:
@@ -379,7 +385,7 @@ class LogPGenerator(SiriusT3CSVGenerator):
 
     def generate_experiment_section(self, sample_df: pd.DataFrame) -> str:
         """
-        Generate the experimental section for the "pH-metric medium logP octanol" template.
+        Generate the experimental section for the "pH-metric medium logP" template.
         This has 16 samples with 2x cleanup steps in between samples in each plate
         """
         lines = []
@@ -388,7 +394,7 @@ class LogPGenerator(SiriusT3CSVGenerator):
             lines.append(
                 ",".join(
                     [
-                        "pH-metric medium logP octanol",
+                        f"pH-metric medium logP {self._solvent}",
                         f"title,logP of {sample_name}",
                         f"{sample_name}",
                         f"{sample_name},1",
