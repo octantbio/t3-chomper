@@ -24,6 +24,7 @@ var/
 *.egg
 pip-wheel-metadata/
 wheelhouse/
+sample_data/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -64,3 +65,6 @@ venv.bak/
 .poetry/
 # Or if using Poetry's virtualenvs inside project
 .poet
+
+# Claude Code local settings
+.claude/

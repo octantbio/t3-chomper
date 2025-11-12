@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 def convert_long_pka_df(
     long_df: pd.DataFrame,
-    id_col: str = "vendor_id",
+    id_col: str = "sample",
     pka_col: str = "pka_value",
     pka_type_col: str = "pka_type",
     reformatted_pka_col: str = "reformatted_pkas",
@@ -56,16 +56,21 @@ def generate_registration_pka_file(
     pka_csv: str,
     filter_file: Union[str, None] = None,
     sample_col: str = "sample",
+    concentration_mM: float = 10.0,
+    volume_ul: float = 5.0,
 ) -> pd.DataFrame:
     """
     From a CSV of registration data and a CSV of estimated pKa data, return a merged dataframe
 
     args:
-        registration_csv: registration data file. Expects compounds to be annotated with "ID" column
-        pka_csv: pKa estimate data file. Expected compounds to be annotated with a "vendor_id" column, and
+        registration_csv: registration data file. Must contain columns: sample (or custom via sample_col), well, mw
+        pka_csv: pKa estimate data file. Must contain a column with sample identifiers (matching sample_col), and
             pKa estimates formatted for Pion Sirius T3 input files under a column named "reformatted_pkas"
+            (or columns pka_value and pka_type for long format which will be auto-converted)
         filter_file: file with sample names that should be considered, used to filter a larger regi file.
-        sample_fol: name of column with unique sample names
+        sample_col: name of column with unique sample names (default: "sample")
+        concentration_mM: sample concentration in mM (default: 10.0)
+        volume_ul: sample volume in µL (default: 5.0)
     Returns:
         Merged dataframe with columns from the registration_csv and the estimated pKa data from the pKa data file
     """
@@ -75,13 +80,6 @@ def generate_registration_pka_file(
     # convert regi file columns to lowercase
     regi_df = pd.read_csv(registration_csv).rename(columns=str.lower)
     logger.info(f"Read regi file {registration_csv} with {len(regi_df)} rows.")
-
-    # If sample_col is not present, but registry number and batch name are, construct sample_col from those
-    if sample_col not in regi_df.columns:
-        if "registry number" in regi_df.columns and "batch name" in regi_df.columns:
-            regi_df[sample_col] = regi_df.apply(
-                lambda x: f"""{x["registry number"]}-{x["batch name"]}""", axis=1
-            )
 
     # Regi file must have sample_col, well and MW columns
     regi_required_columns = [
@@ -137,6 +135,10 @@ def generate_registration_pka_file(
     # Drop rows with no pKa data
     merged_df.dropna(subset=pkas_col, inplace=True)
     logger.info(f"Merged data has {len(merged_df)} rows with pKa data.")
+
+    # Add concentration and volume columns
+    merged_df["concentration_mm"] = concentration_mM
+    merged_df["vol_uL"] = volume_ul
 
     return merged_df
 
