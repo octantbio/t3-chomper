@@ -108,8 +108,8 @@ Files for each tray will be generated in the output directory provided with the 
 # Generate csv experiment import files with fastuvpska format
 t3_gencsv --regi <registration file> --pka <pKa data file> --protocol fastuvpska --output <new_pka_experiment_dir>
 
-# Generate csv experiment import files with logp format
-t3_gencsv --regi <registration file> --pka <pKa data file> --protocol logp --output <new_logp_experiment_dir>
+# Generate csv experiment import files with logp format (solvent is required)
+t3_gencsv --regi <registration file> --pka <pKa data file> --protocol logp --logp-solvent octanol --output <new_logp_experiment_dir>
 
 # Generate csv experiment import files with phmetric tray format and only include samples listed in the filter file
 t3_gencsv --regi <registration file> --filter-file <filter_file> --pka <pKa data file> --protocol phmetric --output <new_logp_experiment_dir>
@@ -117,16 +117,22 @@ t3_gencsv --regi <registration file> --filter-file <filter_file> --pka <pKa data
 # Generate csv with custom concentration (20 mM) and volume (10 µL)
 t3_gencsv --regi <registration file> --pka <pKa data file> --protocol fastuvpska --concentration 20 --volume 10 --output <output_dir>
 
+# Generate logP experiment with toluene solvent
+t3_gencsv --regi <registration file> --pka <pKa data file> --protocol logp --logp-solvent toluene --output <output_dir>
+
 ```
 
 ### Optional Parameters
 
 - `--concentration FLOAT`: Sample concentration in mM (default: 10.0)
 - `--volume FLOAT`: Sample volume in µL (default: 5.0)
+- `--logp-solvent [octanol|toluene|cyclohexane|chloroform]`: Solvent for logP protocol (**required when --protocol is logp**)
 - `--sample-col TEXT`: Name of sample/ID column for joining files (default: "sample")
 - `--filter-file FILE`: CSV file with sample names to include (filters the registration file)
 
-These parameters allow you to specify sample concentration and volume that will be added to all records in the generated experiment files.
+**Notes:**
+- `--concentration` and `--volume` are not used for logP protocol
+- `--logp-solvent` is required when `--protocol` is `logp` - the command will fail with a validation error if not provided
 
 ```
 
@@ -202,6 +208,11 @@ GUI wrapper for the `t3_gencsv` command-line tool.
   - Concentration (mM) - default: 10
   - Volume (µL) - default: 5
   - These fields are disabled for logP protocol
+- For logP protocol, allows selection of solvent:
+  - Choices: <none>, octanol, toluene, cyclohexane, chloroform
+  - Validation: Solvent selection is required for logP protocol
+  - Dialog prevents closing until valid solvent is selected or user cancels
+  - This field is disabled for non-logP protocols
 - Automatically sets output folder to `<regi_folder>/<protocol>`
 - Executes `t3_gencsv.exe` with selected parameters
 - Captures output and creates timestamped log file
@@ -209,8 +220,11 @@ GUI wrapper for the `t3_gencsv` command-line tool.
 
 **Equivalent command line:**
 ```bash
-# Without filter file
-t3_gencsv --regi "<selected_regi>" --pka "<selected_pka>" --protocol <selected_protocol> --concentration <value> --volume <value> --output "<regi_folder>/<protocol>"
+# Non-logP protocol
+t3_gencsv --regi "<selected_regi>" --pka "<selected_pka>" --protocol fastuvpska --concentration 10 --volume 5 --output "<regi_folder>/<protocol>"
+
+# logP protocol with solvent
+t3_gencsv --regi "<selected_regi>" --pka "<selected_pka>" --protocol logp --logp-solvent toluene --output "<regi_folder>/<protocol>"
 
 # With filter file
 t3_gencsv --regi "<selected_regi>" --pka "<selected_pka>" --filter-file "<selected_filter>" --protocol <selected_protocol> --concentration <value> --volume <value> --output "<regi_folder>/<protocol>"
