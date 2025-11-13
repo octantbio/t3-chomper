@@ -76,7 +76,7 @@ if ($filterPrompt -eq [System.Windows.Forms.DialogResult]::Yes) {
 # Create form for protocol selection
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Select Protocol and Parameters"
-$form.Size = New-Object System.Drawing.Size(350, 280)
+$form.Size = New-Object System.Drawing.Size(350, 340)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -126,34 +126,81 @@ $volumeTextBox.Size = New-Object System.Drawing.Size(160, 20)
 $volumeTextBox.Text = "5"
 $form.Controls.Add($volumeTextBox)
 
-# Add event handler to disable concentration/volume for logP protocol
+# Create solvent label
+$solventLabel = New-Object System.Windows.Forms.Label
+$solventLabel.Location = New-Object System.Drawing.Point(10, 150)
+$solventLabel.Size = New-Object System.Drawing.Size(150, 20)
+$solventLabel.Text = "Solvent (for logP):"
+$form.Controls.Add($solventLabel)
+
+# Create solvent dropdown
+$solventComboBox = New-Object System.Windows.Forms.ComboBox
+$solventComboBox.Location = New-Object System.Drawing.Point(160, 150)
+$solventComboBox.Size = New-Object System.Drawing.Size(160, 20)
+$solventComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$solventComboBox.Items.AddRange(@("<none>", "octanol", "toluene", "cyclohexane", "chloroform"))
+$solventComboBox.SelectedIndex = 0  # Default to <none>
+$form.Controls.Add($solventComboBox)
+
+# Add event handler to manage field states based on protocol
 $comboBox.Add_SelectedIndexChanged({
     $selectedProtocol = $comboBox.SelectedItem
     if ($selectedProtocol -eq "logp") {
+        # Disable concentration/volume for logP
         $concentrationTextBox.Enabled = $false
         $volumeTextBox.Enabled = $false
         $concentrationLabel.Enabled = $false
         $volumeLabel.Enabled = $false
+        # Enable solvent for logP
+        $solventComboBox.Enabled = $true
+        $solventLabel.Enabled = $true
     } else {
+        # Enable concentration/volume for non-logP protocols
         $concentrationTextBox.Enabled = $true
         $volumeTextBox.Enabled = $true
         $concentrationLabel.Enabled = $true
         $volumeLabel.Enabled = $true
+        # Disable solvent for non-logP protocols
+        $solventComboBox.Enabled = $false
+        $solventLabel.Enabled = $false
     }
 })
 
+# Trigger initial state based on default protocol selection
+$comboBox.SelectedIndex = 0
+
 # Create OK button
 $okButton = New-Object System.Windows.Forms.Button
-$okButton.Location = New-Object System.Drawing.Point(160, 190)
+$okButton.Location = New-Object System.Drawing.Point(160, 250)
 $okButton.Size = New-Object System.Drawing.Size(75, 30)
 $okButton.Text = "OK"
-$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
-$form.AcceptButton = $okButton
 $form.Controls.Add($okButton)
+
+# Add validation on OK button click
+$okButton.Add_Click({
+    $selectedProtocol = $comboBox.SelectedItem
+    $selectedSolvent = $solventComboBox.SelectedItem
+
+    # Validate: if protocol is logp, solvent must not be <none>
+    if ($selectedProtocol -eq "logp" -and $selectedSolvent -eq "<none>") {
+        [System.Windows.Forms.MessageBox]::Show(
+            "Solvent selection is required for logP protocol.`n`nPlease select a solvent: octanol, toluene, cyclohexane, or chloroform.",
+            "Validation Error",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Warning
+        )
+        # Do not close the dialog - user must fix the issue
+        return
+    }
+
+    # Validation passed - set dialog result and close
+    $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.Close()
+})
 
 # Create Cancel button
 $cancelButton = New-Object System.Windows.Forms.Button
-$cancelButton.Location = New-Object System.Drawing.Point(245, 190)
+$cancelButton.Location = New-Object System.Drawing.Point(245, 250)
 $cancelButton.Size = New-Object System.Drawing.Size(75, 30)
 $cancelButton.Text = "Cancel"
 $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
@@ -167,6 +214,7 @@ if ($formResult -eq [System.Windows.Forms.DialogResult]::OK) {
     $protocol = $comboBox.SelectedItem
     $concentration = $concentrationTextBox.Text
     $volume = $volumeTextBox.Text
+    $solvent = $solventComboBox.SelectedItem
 } else {
     [System.Windows.Forms.MessageBox]::Show(
         "No protocol selected. Operation cancelled.",
@@ -214,6 +262,11 @@ if ($protocol -ne "logp") {
     $arguments += " --concentration $concentration --volume $volume"
 }
 
+# Add solvent for logP protocol
+if ($protocol -eq "logp" -and $solvent -ne "<none>") {
+    $arguments += " --logp-solvent $solvent"
+}
+
 $fullCommand = "$scriptName $arguments"
 
 # Create log filename with timestamp
@@ -225,6 +278,7 @@ $logPath = Join-Path -Path $outputFolderPath -ChildPath $logFile
 $filterFileLog = if ([string]::IsNullOrEmpty($filterFile)) { "None" } else { $filterFile }
 $concentrationLog = if ($protocol -ne "logp") { $concentration } else { "N/A (logP protocol)" }
 $volumeLog = if ($protocol -ne "logp") { $volume } else { "N/A (logP protocol)" }
+$solventLog = if ($protocol -eq "logp") { $solvent } else { "N/A (non-logP protocol)" }
 
 $logContent = @"
 ========================================
@@ -240,6 +294,7 @@ Parameters:
   --protocol: $protocol
   --concentration: $concentrationLog mM
   --volume: $volumeLog µL
+  --logp-solvent: $solventLog
   --output: $outputFolder (Regi folder + protocol)
 ========================================
 
