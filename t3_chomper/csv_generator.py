@@ -55,7 +55,13 @@ from t3_chomper.formatters import (
     type=float,
     help="Sample volume in µL (default: 5.0)",
 )
-def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol, concentration, volume):
+@click.option(
+    "--logp-solvent",
+    required=False,
+    type=click.Choice(["octanol", "toluene", "cyclohexane", "chloroform"], case_sensitive=False),
+    help="Solvent for logP protocol (required when --protocol is logp)",
+)
+def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol, concentration, volume, logp_solvent):
     """
     Tool for generating experiment files for SiriusT3 instrument.
     Expects a registration ("regi") file with sample information, a pKa file with estimated pKas,
@@ -68,6 +74,10 @@ def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol, concentratio
             "ACID,4.5,BASE,10.5"
     or  2) a "long" format with one row per pKa, and separate columns named "pka_value" and "pka_type"
     """
+    # Validate that logp_solvent is provided when protocol is logp
+    if protocol.name.lower() == "logp" and not logp_solvent:
+        raise click.UsageError("--logp-solvent is required when --protocol is logp")
+
     click.echo(f"Generating {protocol} CSV for import")
     merged_df = generate_registration_pka_file(
         registration_csv=regi,
@@ -78,6 +88,10 @@ def t3_gencsv(regi, pka, filter_file, sample_col, output, protocol, concentratio
         volume_ul=volume,
     )
     buffer = StringIO(merged_df.to_csv(None, index=False))
-    formatter = protocol.value(input_csv=buffer, sample_id_col=sample_col)
+    # Pass solvent parameter for logp protocol
+    if protocol.name.lower() == "logp":
+        formatter = protocol.value(input_csv=buffer, sample_id_col=sample_col, solvent=logp_solvent)
+    else:
+        formatter = protocol.value(input_csv=buffer, sample_id_col=sample_col)
     click.echo(f"Found {formatter.num_samples} samples with estimated pKa values.")
     formatter.generate_csv_files(output_dir=output)
