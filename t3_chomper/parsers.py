@@ -163,6 +163,8 @@ class UVMetricPKaT3RParser(BaseT3RParser):
                     "pka_std": pka.std,
                     "pka_ionic_strength": pka.ionic_strength,
                     "pka_temperature": pka.temperature,
+                    "cosolvent": self.cosolvent_name,
+                    "cosolvent_fractions": self.cosolvent_fractions,
                 }
             )
         return results
@@ -183,6 +185,8 @@ class UVMetricPKaT3RParser(BaseT3RParser):
                 result.ionic_strength for result in self.pka_results
             ],
             "temp_list": [result.temperature for result in self.pka_results],
+            "cosolvent": self.cosolvent_name,
+            "cosolvent_fractions": self.cosolvent_fractions,
             "reformatted_pkas": self.t3_formatted_results,
         }
 
@@ -292,6 +296,40 @@ class UVMetricPKaT3RParser(BaseT3RParser):
             f"{pred.pka_type.lower},{meas.value}"
             for pred, meas in zip(predicted_pkas, measured_pkas)
         )
+
+    @property
+    def cosolvent_name(self) -> str | None:
+        """
+        Get Name of cosolvent used
+        """
+        base = self._doc["DirectControlAssayResultsFile"]["ProcessedData"]
+        if "Sweep" not in base:
+            return None
+        try:
+            first_sweep = base["Sweep"][0]
+            solvent_name = first_sweep["FastDpasResult"]["CosolventRatio"][
+                "CosolventName"
+            ]
+            return solvent_name
+        except (KeyError, IndexError):
+            logger.error(f"Could not extract cosolvent name from {self.filename}")
+
+    @property
+    def cosolvent_fractions(self) -> list[float] | None:
+        """
+        Get a list of the cosolvent fractions by weight
+        """
+        try:
+            sweeps = self._doc["DirectControlAssayResultsFile"]["ProcessedData"][
+                "Sweep"
+            ]
+            fractions = [
+                float(sweep["FastDpasResult"]["CosolventRatio"]["WtFraction"])
+                for sweep in sweeps
+            ]
+            return fractions
+        except (KeyError, IndexError):
+            logger.error(f"Could not extract cosolvent fractions from {self.filename}")
 
 
 class LogPT3RParser(BaseT3RParser):

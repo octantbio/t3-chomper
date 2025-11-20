@@ -57,6 +57,10 @@ def test_pka_parser(pka_result_filename):
     assert isinstance(t3_formatted_results, str)
     assert t3_formatted_results == r"base,8.11591"
 
+    assert x.cosolvent_name == "DMSO"
+    assert isinstance(x.cosolvent_fractions, list)
+    assert len(x.cosolvent_fractions) == 3
+
     result_dict = x.result_dict
     assert isinstance(result_dict, dict)
     assert all(
@@ -71,6 +75,8 @@ def test_pka_parser(pka_result_filename):
             "ionic_strength_list",
             "temp_list",
             "reformatted_pkas",
+            "cosolvent",
+            "cosolvent_fractions",
         ]
     )
 
@@ -91,6 +97,8 @@ def test_pka_parser(pka_result_filename):
             "pka_std",
             "pka_ionic_strength",
             "pka_temperature",
+            "cosolvent",
+            "cosolvent_fractions",
         ]
     )
 
